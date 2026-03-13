@@ -40,7 +40,7 @@ contract VaultlessCore {
     }
 
     function authenticate(bytes32 nullifier) external onlyRegistered notLocked {
-        require(!usedNullifiers[nullifier], "Nullifier already used — replay attack blocked");
+        require(!usedNullifiers[nullifier], "Nullifier already used - replay attack blocked");
         usedNullifiers[nullifier] = true;
         emit AuthSuccess(msg.sender, nullifier, block.timestamp);
     }
@@ -49,9 +49,14 @@ contract VaultlessCore {
         emit AuthFailed(msg.sender, block.timestamp);
     }
 
+    // Duress is logged on-chain but does NOT permanently lock the account
     function triggerDuress() external onlyRegistered {
-        identities[msg.sender].isLocked = true;
         emit DuressActivated(msg.sender, block.timestamp);
+    }
+
+    // Unlock a locked account (self-service)
+    function unlockAccount() external onlyRegistered {
+        identities[msg.sender].isLocked = false;
     }
 
     function refine(bytes32 newHash) external onlyRegistered notLocked {
