@@ -1,171 +1,189 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useVaultless } from '../lib/VaultlessContext';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useVaultless } from "../lib/VaultlessContext";
+import HexLoader from "../components/HexLoader";
 
 export default function Landing() {
   const navigate = useNavigate();
   const { demoMode, setDemoMode } = useVaultless();
-  const [visible] = useState(true);
+  const [loading, setLoading] = useState(true);
   const canvasRef = useRef(null);
 
+  // particles run immediately — landing page is alive under the loader
   useEffect(() => {
     window.scrollTo(0, 0);
     const cleanup = animateParticles(canvasRef.current);
     return cleanup;
   }, []);
 
+  const handleLoaderFinish = useCallback(() => setLoading(false), []);
+
   return (
-    <div style={s.root}>
-      <canvas ref={canvasRef} style={s.canvas} />
-      <div style={s.scanline} />
+    <>
+      {/* Loader sits on top, landing page always rendered underneath */}
+      {loading && <HexLoader onFinish={handleLoaderFinish} />}
 
-      {/* Demo toggle */}
-      <div style={s.demoToggle}>
-        <span style={s.demoLabel}>DEMO MODE</span>
-        <button
-          style={{ ...s.toggle, background: demoMode ? '#00ff88' : '#333' }}
-          onClick={() => setDemoMode(!demoMode)}
-        >
-          {demoMode ? 'ON' : 'OFF'}
-        </button>
-      </div>
+      <div style={s.root}>
+        <canvas ref={canvasRef} style={s.canvas} />
+        <div style={s.scanline} />
 
-      <div style={{
-        ...s.hero,
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(30px)',
-        transition: 'all 0.9s ease',
-      }}>
-
-        {/* Badge */}
-        <div style={s.badge}>
-          <span style={s.badgeDot} />
-          <span style={s.badgeText}>LIVE ON ETHEREUM SEPOLIA</span>
-        </div>
-
-        {/* Headline */}
-        <h1 style={s.headline}>
-          <span style={s.hl1}>Your password</span>
-          <br />
-          <span style={s.hl2}>is how you move.</span>
-        </h1>
-
-        {/* Sub */}
-        <p style={s.sub}>
-          Password can be stolen. Behaviours can't.
-        </p>
-
-        {/* CTAs */}
-        <div style={s.actions}>
+        <div style={s.demoToggle}>
+          <span style={s.demoLabel}>DEMO MODE</span>
           <button
-            style={s.ctaPrimary}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            onClick={() => navigate('/gmail')}
+            style={{ ...s.toggle, background: demoMode ? '#00ff88' : '#333' }}
+            onClick={() => setDemoMode(!demoMode)}
           >
-            Get Started →
+            {demoMode ? 'ON' : 'OFF'}
           </button>
         </div>
 
-        {/* Glitch tagline */}
-        <div style={s.glitchBlock}>
-          <p style={{...s.glitchLine, animation: 'flicker 3.5s infinite 0.5s'}}>Your password is already dead.</p>
-          <p style={s.glitchLine}>
-            Welcome to{' '}
-            <span id="glitch-vaultless" data-text="VAULTLESS" style={{
-              color: '#00ff88',
-              fontWeight: 700,
-              letterSpacing: '0.3em',
-              textShadow: '0 0 12px rgba(0,255,136,0.7)',
-              position: 'relative',
-              display: 'inline-block',
-              animation: 'glitch1 2.5s infinite, flicker 3.5s infinite',
-            }}>VAULTLESS</span>.
+        <div style={s.hero}>
+
+          <div style={s.badge}>
+            <span style={s.badgeDot} />
+            <span style={s.badgeText}>LIVE ON ETHEREUM SEPOLIA</span>
+          </div>
+
+          <h1 style={s.headline}>
+            <span style={s.hl1}>Your password</span>
+            <br />
+            <span style={s.hl2}>is how you move.</span>
+          </h1>
+
+          <p style={s.sub}>
+            Password can be stolen. Behaviours can't.
           </p>
-        </div>
 
-        {/* Feature cards */}
-        <div style={s.cards}>
-          {[
-            { title: 'Behavioural DNA', desc: 'Keystroke timing + mouse dynamics. 64-dimensional vector unique to you. No biometric stored anywhere.', tag: 'Float32Array[64]', tagColor: '#00d4ff' },
-            { title: 'Ethereum Trust Layer', desc: 'Every auth event, failed attempt, and duress trigger logged permanently on Sepolia. Immutable. Public. Forever.', tag: 'keccak256 · Sepolia', tagColor: '#00d4ff' },
-            { title: 'Anti-Coercion Protocol', desc: 'Stress signature detected in rhythm. Ghost session loads. Blockchain records the attack.', tag: 'DuressActivated · On-chain', tagColor: '#ff6b35' },
-          ].map(card => (
-            <div 
-              key={card.title} 
-              style={s.card}
-              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 30px rgba(0,255,136,0.5)'}
-              onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 0 20px rgba(0,255,136,0.2)'}
+          <div style={s.actions}>
+            <button
+              style={s.ctaPrimary}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              onClick={() => navigate('/gmail')}
             >
-              <div style={s.cardTopEdge} />
-              <div style={{ color: '#00ff88', fontSize: 20, marginBottom: 12 }}>⬡</div>
-              <div style={s.cardTitle}>{card.title}</div>
-              <div style={s.cardDesc}>{card.desc}</div>
-              <div style={{ ...s.cardTag, color: card.tagColor }}>{card.tag}</div>
-            </div>
-          ))}
-        </div>
+              Get Started →
+            </button>
+          </div>
 
-        {/* Stats bar */}
-        <div style={s.statsBar}>
-          {[
-            { num: '4.5B', label: 'records breached in 2023' },
-            { num: '0', label: 'records stored in VAULTLESS' },
-            { num: '∞', label: 'every auth on-chain forever' },
-          ].map((stat, i) => (
-            <div key={stat.label} style={{ display: 'flex', alignItems: 'center' }}>
-              {i > 0 && <div style={s.statDivider} />}
-              <div style={s.stat}>
-                <div style={s.statNum}>{stat.num}</div>
-                <div style={s.statLabel}>{stat.label}</div>
+          <div style={s.glitchBlock}>
+            <p style={{ ...s.glitchLine, animation: 'flicker 3.5s infinite 0.5s' }}>
+              Your password is already dead.
+            </p>
+            <p style={s.glitchLine}>
+              Welcome to{' '}
+              <span
+                id="glitch-vaultless"
+                data-text="VAULTLESS"
+                style={{
+                  color: '#00ff88',
+                  fontWeight: 700,
+                  letterSpacing: '0.3em',
+                  position: 'relative',
+                  display: 'inline-block',
+                  animation: 'glitch1 2.5s infinite, flicker 3.5s infinite',
+                }}
+              >
+                VAULTLESS
+              </span>.
+            </p>
+          </div>
+
+          <div style={s.cards}>
+            {[
+              {
+                title: 'Behavioural DNA',
+                desc: 'Keystroke timing + mouse dynamics. 64-dimensional vector unique to you. No biometric stored anywhere.',
+                tag: 'Float32Array[64]',
+                tagColor: '#00d4ff',
+              },
+              {
+                title: 'Ethereum Trust Layer',
+                desc: 'Every auth event, failed attempt, and duress trigger logged permanently on Sepolia. Immutable. Public. Forever.',
+                tag: 'keccak256 · Sepolia',
+                tagColor: '#00d4ff',
+              },
+              {
+                title: 'Anti-Coercion Protocol',
+                desc: 'Stress signature detected in rhythm. Ghost session loads. Blockchain records the attack.',
+                tag: 'DuressActivated · On-chain',
+                tagColor: '#ff6b35',
+              },
+            ].map(card => (
+              <div
+                key={card.title}
+                style={s.card}
+                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 30px rgba(0,255,136,0.5)'}
+                onMouseLeave={e => e.currentTarget.style.boxShadow = '0 0 20px rgba(0,255,136,0.2)'}
+              >
+                <div style={s.cardTopEdge} />
+                <div style={{ color: '#00ff88', fontSize: 20, marginBottom: 12 }}>⬡</div>
+                <div style={s.cardTitle}>{card.title}</div>
+                <div style={s.cardDesc}>{card.desc}</div>
+                <div style={{ ...s.cardTag, color: card.tagColor }}>{card.tag}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          <div style={s.statsBar}>
+            {[
+              { num: '4.5B', label: 'records breached in 2023' },
+              { num: '0', label: 'records stored in VAULTLESS' },
+              { num: '∞', label: 'every auth on-chain forever' },
+            ].map((stat, i) => (
+              <div key={stat.label} style={{ display: 'flex', alignItems: 'center' }}>
+                {i > 0 && <div style={s.statDivider} />}
+                <div style={s.stat}>
+                  <div style={s.statNum}>{stat.num}</div>
+                  <div style={s.statLabel}>{stat.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
 
+        <style>{`
+          @keyframes glitch1 {
+            0%,78%,100% { clip-path: none; transform: none; }
+            79% { clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); transform: translateX(-6px); }
+            80% { clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); transform: translateX(6px); }
+            81% { clip-path: polygon(0 10%, 100% 10%, 100% 30%, 0 30%); transform: translateX(-3px); }
+            82% { clip-path: polygon(0 50%, 100% 50%, 100% 70%, 0 70%); transform: translateX(5px); }
+            83% { clip-path: none; transform: translateX(-2px); }
+            84% { clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%); transform: translateX(4px); }
+            85% { clip-path: none; transform: none; }
+          }
+          @keyframes glitch2 {
+            0%,78%,100% { opacity: 0; }
+            79% { opacity: 1; transform: translateX(5px); color: #ff0040; }
+            80% { transform: translateX(-5px); color: #00ffff; }
+            81% { opacity: 1; transform: translateX(3px); color: #ff0040; }
+            82% { transform: translateX(-4px); color: #00ffff; }
+            83% { opacity: 0; }
+            84% { opacity: 1; transform: translateX(2px); color: #ff0040; }
+            85% { opacity: 0; }
+          }
+          @keyframes flicker {
+            0%,70%,100% { opacity: 1; }
+            71% { opacity: 0.3; }
+            72% { opacity: 1; }
+            73% { opacity: 0.5; }
+            74% { opacity: 1; }
+            75% { opacity: 0.2; }
+            76% { opacity: 1; }
+          }
+          #glitch-vaultless::before {
+            content: attr(data-text);
+            position: absolute;
+            left: 0; top: 0;
+            color: #00ff88;
+            letter-spacing: 0.3em;
+            animation: glitch2 2.5s infinite;
+            pointer-events: none;
+          }
+        `}</style>
       </div>
-
-      <style>{`
-        @keyframes glitch1 {
-          0%,78%,100% { clip-path: none; transform: none; }
-          79% { clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); transform: translateX(-6px); }
-          80% { clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); transform: translateX(6px); }
-          81% { clip-path: polygon(0 10%, 100% 10%, 100% 30%, 0 30%); transform: translateX(-3px); }
-          82% { clip-path: polygon(0 50%, 100% 50%, 100% 70%, 0 70%); transform: translateX(5px); }
-          83% { clip-path: none; transform: translateX(-2px); }
-          84% { clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%); transform: translateX(4px); }
-          85% { clip-path: none; transform: none; }
-        }
-        @keyframes glitch2 {
-          0%,78%,100% { opacity: 0; }
-          79% { opacity: 1; transform: translateX(5px); color: #ff0040; }
-          80% { transform: translateX(-5px); color: #00ffff; }
-          81% { opacity: 1; transform: translateX(3px); color: #ff0040; }
-          82% { transform: translateX(-4px); color: #00ffff; }
-          83% { opacity: 0; }
-          84% { opacity: 1; transform: translateX(2px); color: #ff0040; }
-          85% { opacity: 0; }
-        }
-        @keyframes flicker {
-          0%,70%,100% { opacity: 1; }
-          71% { opacity: 0.3; }
-          72% { opacity: 1; }
-          73% { opacity: 0.5; }
-          74% { opacity: 1; }
-          75% { opacity: 0.2; }
-          76% { opacity: 1; }
-        }
-        #glitch-vaultless::before {
-          content: attr(data-text);
-          position: absolute;
-          left: 0; top: 0;
-          color: #00ff88;
-          letter-spacing: 0.3em;
-          animation: glitch2 2.5s infinite;
-          pointer-events: none;
-        }
-      `}</style>
-    </div>
+    </>
   );
 }
 
@@ -173,13 +191,13 @@ function animateParticles(canvas) {
   if (!canvas) return () => {};
   const ctx = canvas.getContext('2d');
   let animId;
-
   const mouse = { x: null, y: null };
 
-  window.addEventListener("mousemove", (e) => {
+  const onMouseMove = (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
-  });
+  };
+  window.addEventListener("mousemove", onMouseMove);
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -246,13 +264,14 @@ function animateParticles(canvas) {
   return () => {
     cancelAnimationFrame(animId);
     window.removeEventListener('resize', resize);
+    window.removeEventListener('mousemove', onMouseMove);
   };
 }
 
 const s = {
   root: {
     minHeight: '100vh',
-    background: 'transparent',
+    background: '#0a0a0c',
     color: '#e8e8f0',
     fontFamily: "'Inter', 'Segoe UI', sans-serif",
     position: 'relative',
@@ -274,10 +293,14 @@ const s = {
     borderRadius: 8, padding: '8px 14px',
     boxShadow: '0 0 18px rgba(0,255,136,0.2)',
   },
-  demoLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 11, letterSpacing: 2, fontFamily: "'Courier New', monospace" },
+  demoLabel: {
+    color: 'rgba(255,255,255,0.75)', fontSize: 11,
+    letterSpacing: 2, fontFamily: "'Courier New', monospace",
+  },
   toggle: {
     border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
-    fontSize: 11, fontWeight: 700, color: '#111', letterSpacing: 1, transition: 'background 0.3s',
+    fontSize: 11, fontWeight: 700, color: '#111', letterSpacing: 1,
+    transition: 'background 0.3s',
   },
   hero: {
     position: 'relative', zIndex: 2,
@@ -302,8 +325,7 @@ const s = {
   hl1: {
     display: 'block',
     fontSize: 'clamp(48px, 8vw, 88px)',
-    fontWeight: 700, color: '#e8e8f0',
-    letterSpacing: '-0.03em',
+    fontWeight: 700, color: '#e8e8f0', letterSpacing: '-0.03em',
   },
   hl2: {
     display: 'block',
@@ -332,10 +354,8 @@ const s = {
     boxShadow: '0 0 24px rgba(0,255,136,0.3)',
     transition: 'opacity 0.2s',
   },
-
   glitchBlock: {
-    marginBottom: 56, marginTop: 4,
-    textAlign: 'center',
+    marginBottom: 56, marginTop: 4, textAlign: 'center',
   },
   glitchLine: {
     fontFamily: "'Courier New', monospace",
@@ -343,7 +363,6 @@ const s = {
     letterSpacing: '0.15em', textTransform: 'uppercase',
     margin: '0 0 6px',
   },
-
   cards: {
     display: 'flex', gap: 20, flexWrap: 'wrap',
     justifyContent: 'center', marginBottom: 64, width: '100%',
@@ -355,6 +374,7 @@ const s = {
     background: 'linear-gradient(135deg, rgba(13,13,15,0.95), rgba(20,20,24,0.95))',
     border: '1px solid rgba(0,255,136,0.12)',
     boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+    transition: 'box-shadow 0.3s ease',
   },
   cardTopEdge: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 1,
@@ -382,5 +402,5 @@ const s = {
     backgroundClip: 'text',
   },
   statLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
-  statDivider: { width: 1, height: 40, background: 'rgba(0,255,136,0.2)', margin: '0' },
+  statDivider: { width: 1, height: 40, background: 'rgba(0,255,136,0.2)' },
 };
