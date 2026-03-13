@@ -1,6 +1,31 @@
 # VAULTLESS
 
-Behavioural authentication prototype that uses typing rhythm and mouse dynamics as a password substitute, with authentication events anchored to an Ethereum Sepolia smart contract.
+Behavioural authentication prototype for desktop and touch devices that uses multiple behavioural signals, including typing rhythm, mouse dynamics, touch interaction, and stress indicators, as a password substitute, with authentication events anchored to an Ethereum Sepolia smart contract.
+
+## Why We Are Building This
+
+Digital security still depends too heavily on secrets that can be stolen, guessed, phished, leaked, or coerced out of people. Passwords, OTPs, and even many forms of 2FA often fail at the exact moment a person is under pressure.
+
+VAULTLESS is being built to explore a safer model: authentication based on how a person naturally behaves, not just what they know. Instead of trusting a static secret, the system looks at behavioural patterns such as typing rhythm, mouse movement, and touch behaviour on mobile devices, then uses that signal to make authentication harder to fake and easier to adapt under real-world conditions.
+
+This matters socially because account compromise is not just a technical inconvenience. It affects:
+
+- students and workers whose email and identity can be hijacked
+- families who lose savings to phishing and fraud
+- journalists, activists, and vulnerable users facing coercion
+- teams that need better signals than passwords alone
+
+The duress flow is especially important to that vision. In a coercive situation, the goal is not only to block access, but to protect the user without obviously alerting the attacker. That makes VAULTLESS a prototype for more humane security, where systems respond to risk with discretion rather than just denial.
+
+## Social Impact
+
+VAULTLESS is designed as a prototype for security that could help society in practical ways:
+
+- reduce dependence on stolen or reused passwords
+- make phishing less effective by adding behaviour-based verification
+- create safer fallback behaviour during coercion scenarios
+- provide transparent event logging for high-trust systems
+- encourage security design that protects people, not just accounts
 
 ## What It Does
 
@@ -8,7 +33,10 @@ VAULTLESS replaces static credentials with a behavioural profile built from:
 
 - Keystroke timing
 - Mouse movement patterns
+- Touch movement and touch pressure on supported devices
 - Stress and rhythm variance signals
+
+This makes VAULTLESS a multi-platform authentication system that can adapt to both desktop and mobile usage instead of relying on a single input signal.
 
 The app guides a user through enrollment, compares live behaviour during authentication, and then routes the session into one of three outcomes:
 
@@ -24,6 +52,8 @@ The app guides a user through enrollment, compares live behaviour during authent
 4. A commitment hash is registered on the Sepolia contract.
 5. During authentication, a fresh behavioural sample is compared against the enrolled baseline.
 6. The app logs `AuthSuccess`, `AuthFailed`, or `DuressActivated`.
+
+On touch-capable devices, enrollment and authentication can also capture touch gestures and pressure data, with optional motion/sensor support where the browser and device allow it.
 
 ## Routes
 
@@ -46,6 +76,7 @@ The app guides a user through enrollment, compares live behaviour during authent
 - Tailwind/PostCSS tooling
 - Solidity 0.8.20
 - EmailJS for duress alerts
+- Touch and motion-aware mobile interaction capture
 
 ## Project Structure
 
@@ -131,7 +162,7 @@ VITE_ALERT_EMAIL=alert@example.com
 
 ## Smart Contract
 
-The contract lives in [`src/contracts/VaultlessCore.sol`](/c:/Users/Dell/OneDrive/Desktop/VAULTLESS/src/contracts/VaultlessCore.sol).
+The contract lives in [`src/contracts/VaultlessCore.sol`]
 
 It supports:
 
@@ -144,7 +175,7 @@ It supports:
 ### Deploy To Sepolia
 
 1. Open Remix.
-2. Paste in [`src/contracts/VaultlessCore.sol`](/c:/Users/Dell/OneDrive/Desktop/VAULTLESS/src/contracts/VaultlessCore.sol).
+2. Paste in [`src/contracts/VaultlessCore.sol`]
 3. Compile with Solidity `0.8.20`.
 4. Deploy using `Injected Provider - MetaMask`.
 5. Copy the deployed address into `VITE_CONTRACT_ADDRESS`.
@@ -152,7 +183,14 @@ It supports:
 
 ## Behaviour Engine
 
-The main scoring logic is in [`src/hooks/behaviouralEngine.js`](/c:/Users/Dell/OneDrive/Desktop/VAULTLESS/src/hooks/behaviouralEngine.js).
+The main scoring logic is in [`src/hooks/behaviouralEngine.js`]
+
+It currently uses a mix of:
+
+- keystroke hold and flight timing
+- mouse movement and click behavior
+- touch movement and touch pressure on mobile devices
+- optional motion/sensor-derived signals when supported
 
 Current decision rules in code:
 
@@ -161,6 +199,8 @@ Current decision rules in code:
 - otherwise -> rejected
 
 Stress detection currently triggers when live rhythm variance exceeds about `2.5x` the enrollment baseline.
+
+When there is enough mobile interaction data in both enrollment and live sessions, the engine can also factor in touch and motion-related signals to strengthen authentication on touch devices.
 
 ## Duress Protocol
 
@@ -174,7 +214,7 @@ This lets the app avoid clearly signaling to an attacker that duress was detecte
 
 ## Persistence
 
-Enrollment data is stored client-side in `localStorage` through [`src/lib/VaultlessContext.jsx`](/c:/Users/Dell/OneDrive/Desktop/VAULTLESS/src/lib/VaultlessContext.jsx).
+Enrollment data is stored client-side in `localStorage` through [`src/lib/VaultlessContext.jsx`]
 
 That includes:
 
@@ -189,6 +229,7 @@ That includes:
 - This repo is a prototype, not a production-hardened auth system.
 - Behavioural data is processed client-side and reduced to a commitment hash for contract registration.
 - The contract is written for Sepolia testing, not mainnet deployment as-is.
+- The broader goal is to prototype authentication that is more resilient, more human-aware, and more socially protective than passwords alone.
 
 ## Scripts
 
