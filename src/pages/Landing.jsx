@@ -9,6 +9,7 @@ export default function Landing() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     setTimeout(() => setVisible(true), 100);
     const cleanup = animateParticles(canvasRef.current);
     return cleanup;
