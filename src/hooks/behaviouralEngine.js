@@ -307,17 +307,9 @@ export function cosineSimilarity(
     );
   }
 
-  // Combine keystroke and mouse: keystrokes dominate, mouse refines.
-  // If mouse looks very unlike enrollment but keystrokes are strong, down‑weight mouse heavily
-  let score;
-  if (mouseScore == null) {
-    score = keyScore;
-  } else if (keyScore >= 0.70 && mouseScore < 0.40) {
-    // Trust keyboard more, treat mouse as weak signal
-    score = keyScore * 0.90 + mouseScore * 0.10;
-  } else {
-    score = keyScore * 0.75 + mouseScore * 0.25;
-  }
+  // For now, similarity scoring is keystroke-only. Mouse/Gesture DNA still
+  // contributes to the on-chain vector but not to the decision boundary.
+  const score = keyScore;
 
   console.log('[VAULTLESS AUTH DEBUG]');
   console.log('  Hold pattern (Pearson):', holdPatternScore.toFixed(3), '→ normalized:', hpNorm.toFixed(3));
@@ -344,10 +336,10 @@ export function detectStress(liveK, enrollK) {
 }
 
 export function classifyScore(score, isStress = false) {
-  // Match UI thresholds:
-  // - >= 0.70           → authenticated
-  // - 0.60–0.70 + stress → duress
-  // - everything else   → rejected
+  // Match the visual thresholds and keep duress narrow:
+  // - >= 0.70                    → authenticated
+  // - 0.60–0.70 with stress true → duress
+  // - everything else            → rejected
   if (score >= 0.70) return 'authenticated';
   if (score >= 0.60 && score < 0.70 && isStress) return 'duress';
   return 'rejected';
@@ -375,8 +367,6 @@ function pearsonCorrelation(a, b) {
   return num / Math.sqrt(da * db);
 }
 
-// Z-score normalize an array (mean=0, std=1)
-// This lets us compare shape/pattern regardless of absolute speed
 function zNormalize(arr) {
   if (!arr || arr.length < 2) return arr || [];
   const m = mean(arr);
