@@ -6,11 +6,13 @@ import Enroll from './pages/Enroll';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Ghost from './pages/Ghost';
+import ParticleBackground from './components/ParticleBackground.jsx'
 
 export default function App() {
   return (
     <VaultlessProvider>
       <BrowserRouter>
+        <ParticleBackground />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/gmail" element={<Gmail />} />

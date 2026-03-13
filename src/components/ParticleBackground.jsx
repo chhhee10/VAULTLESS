@@ -16,7 +16,7 @@ export default function ParticleBackground() {
       options={{
         fullScreen: {
           enable: true,
-          zIndex: -1
+          zIndex: 0
         },
 
         background: {
