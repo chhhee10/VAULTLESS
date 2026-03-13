@@ -52,7 +52,7 @@ export default function Landing() {
 
         {/* Sub */}
         <p style={s.sub}>
-          It can't be stolen. It can't be copied. And if someone forces you to use it — they've already lost.
+          Password can be stolen. Behaviours can't.
         </p>
 
         {/* CTAs */}
@@ -277,7 +277,7 @@ const s = {
     backgroundClip: 'text',
   },
   sub: {
-    color: '#888', fontSize: 20, lineHeight: 1.7,
+    color: '#ffffff', fontSize: 20, lineHeight: 1.7,
     maxWidth: 640, marginBottom: 48, fontWeight: 300,
   },
   actions: {
