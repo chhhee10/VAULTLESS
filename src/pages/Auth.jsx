@@ -10,7 +10,7 @@ const PHRASE = 'Secure my account';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { enrollmentVector, enrollmentKeystroke, walletAddress, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode } = useVaultless();
+  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode } = useVaultless();
 
   const [phase, setPhase] = useState('ready'); // ready | typing | scoring | result
   const [currentInput, setCurrentInput] = useState('');
@@ -27,6 +27,8 @@ export default function Auth() {
   useEffect(() => {
     if (phase === 'typing') {
       inputRef.current?.focus();
+      keystroke.reset();
+      mouse.reset();
       mouse.startCapture();
     }
   }, [phase]);
@@ -52,7 +54,7 @@ export default function Auth() {
   const processAuth = async () => {
     setPhase('scoring');
 
-    const kData = keystroke.extractVector();
+    const kData = keystroke.extractVector(PHRASE);
     const mData = mouse.extractVector();
 
     if (!kData || !enrollmentVector) {
@@ -62,19 +64,17 @@ export default function Auth() {
 
     const liveVector = buildCombinedVector(kData, mData);
 
-    // Demo mode: randomize score based on which "scenario" the user picks
-    let simScore;
+    // Always compute a real similarity score (even in demo mode) so the demo behaves like the real engine.
+    let simScore = cosineSimilarity(liveVector, enrollmentVector, kData, enrollmentKeystroke, mData, enrollmentMouse || null);
     if (demoMode) {
-      // Simulate by adding random noise
-      simScore = 0.89 + (Math.random() * 0.08 - 0.04); // normal: ~0.87-0.97
-    } else {
-      simScore = cosineSimilarity(liveVector, enrollmentVector, kData, enrollmentKeystroke, mData, null);
+      // Add minimal noise so it still feels like a demo, but keep the same underlying behavior.
+      simScore = Math.min(0.99, Math.max(0.01, simScore + (Math.random() * 0.02 - 0.01)));
     }
 
-    const isStress = demoMode ? false : detectStress(kData, enrollmentKeystroke);
-    const classification = demoMode ? (simScore > 0.85 ? 'authenticated' : 'duress') : classifyScore(simScore, isStress);
+    const isStress = detectStress(kData, enrollmentKeystroke);
+    const classification = classifyScore(simScore, isStress);
 
-    // Stress indicator (0–100)
+    // Stress indicator (0–100) - use deterministic calculation in demo mode for consistency
     const stressVal = isStress ? 85 + Math.random() * 15 : Math.max(0, (0.85 - simScore) * 200);
     setStressScore(Math.min(100, stressVal));
 
@@ -159,8 +159,8 @@ export default function Auth() {
   };
 
   const scoreColor = score === null ? '#fff'
-    : score > 0.85 ? '#00ff88'
-    : score >= 0.55 ? '#ffaa00'
+    : score > 0.70 ? '#00ff88'
+    : score >= 0.60 ? '#ffaa00'
     : '#ff4444';
 
   const resultMessages = {
@@ -241,8 +241,8 @@ export default function Auth() {
               {/* Score bar */}
               <div style={styles.barContainer}>
                 <div style={{ ...styles.bar, width: `${(score || 0) * 100}%`, background: scoreColor, transition: 'width 0.05s ease' }} />
-                <div style={{ ...styles.barMarker, left: '55%' }} title="Duress threshold" />
-                <div style={{ ...styles.barMarker, left: '85%', borderColor: '#00ff88' }} title="Auth threshold" />
+                <div style={{ ...styles.barMarker, left: '60%' }} title="Duress threshold" />
+                <div style={{ ...styles.barMarker, left: '70%', borderColor: '#00ff88' }} title="Auth threshold" />
               </div>
               <div style={styles.barLabels}>
                 <span style={{ color: '#ff4444' }}>REJECTED</span>

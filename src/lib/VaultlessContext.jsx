@@ -18,6 +18,7 @@ function loadFromStorage() {
     return {
       enrollmentVector:    deserializeVector(data.enrollmentVector),
       enrollmentKeystroke: data.enrollmentKeystroke || null,
+      enrollmentMouse:     data.enrollmentMouse || null,
       walletAddress:       data.walletAddress || null,
       isEnrolled:          data.isEnrolled || false,
     };
@@ -26,11 +27,12 @@ function loadFromStorage() {
   }
 }
 
-function saveToStorage({ enrollmentVector, enrollmentKeystroke, walletAddress, isEnrolled }) {
+function saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, isEnrolled }) {
   try {
     localStorage.setItem('vaultless_enrollment', JSON.stringify({
       enrollmentVector:    serializeVector(enrollmentVector),
       enrollmentKeystroke: enrollmentKeystroke,
+      enrollmentMouse:     enrollmentMouse,
       walletAddress:       walletAddress,
       isEnrolled:          isEnrolled,
     }));
@@ -44,6 +46,7 @@ export function VaultlessProvider({ children }) {
 
   const [enrollmentVector,    setEnrollmentVectorRaw]    = useState(saved?.enrollmentVector    || null);
   const [enrollmentKeystroke, setEnrollmentKeystrokeRaw] = useState(saved?.enrollmentKeystroke || null);
+  const [enrollmentMouse,     setEnrollmentMouseRaw]     = useState(saved?.enrollmentMouse     || null);
   const [walletAddress,       setWalletAddressRaw]       = useState(saved?.walletAddress       || null);
   const [isEnrolled,          setIsEnrolledRaw]          = useState(saved?.isEnrolled          || false);
 
@@ -61,6 +64,9 @@ export function VaultlessProvider({ children }) {
   const setEnrollmentKeystroke = (v) => {
     setEnrollmentKeystrokeRaw(v);
   };
+  const setEnrollmentMouse = (v) => {
+    setEnrollmentMouseRaw(v);
+  };
   const setWalletAddress = (v) => {
     setWalletAddressRaw(v);
   };
@@ -71,11 +77,11 @@ export function VaultlessProvider({ children }) {
   // Persist to localStorage whenever any enrollment field changes
   useEffect(() => {
     if (isEnrolled && enrollmentVector && enrollmentKeystroke) {
-      saveToStorage({ enrollmentVector, enrollmentKeystroke, walletAddress, isEnrolled });
+      saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, isEnrolled });
       console.log('[VAULTLESS] Enrollment persisted to localStorage');
       console.log('[VAULTLESS] Stored holdTimes:', enrollmentKeystroke.holdTimes?.length, 'flightTimes:', enrollmentKeystroke.flightTimes?.length);
     }
-  }, [enrollmentVector, enrollmentKeystroke, walletAddress, isEnrolled]);
+  }, [enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, isEnrolled]);
 
   const addEtherscanLink = (label, txHash) => {
     setEtherscanLinks(prev => [...prev, {
@@ -89,6 +95,7 @@ export function VaultlessProvider({ children }) {
     localStorage.removeItem('vaultless_enrollment');
     setEnrollmentVectorRaw(null);
     setEnrollmentKeystrokeRaw(null);
+    setEnrollmentMouseRaw(null);
     setWalletAddressRaw(null);
     setIsEnrolledRaw(false);
   };
@@ -97,6 +104,7 @@ export function VaultlessProvider({ children }) {
     <VaultlessContext.Provider value={{
       enrollmentVector,    setEnrollmentVector,
       enrollmentKeystroke, setEnrollmentKeystroke,
+      enrollmentMouse,     setEnrollmentMouse,
       walletAddress,       setWalletAddress,
       isEnrolled,          setIsEnrolled,
       isDuressMode,        setIsDuressMode,

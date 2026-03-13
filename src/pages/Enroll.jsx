@@ -11,7 +11,7 @@ const REQUIRED_SAMPLES = 3;
 
 export default function Enroll() {
   const navigate = useNavigate();
-  const { setEnrollmentVector, setEnrollmentKeystroke, setWalletAddress, setIsEnrolled, addEtherscanLink, demoMode } = useVaultless();
+  const { setEnrollmentVector, setEnrollmentKeystroke, setEnrollmentMouse, setWalletAddress, setIsEnrolled, addEtherscanLink, demoMode } = useVaultless();
 
   const [phase, setPhase] = useState('intro'); // intro | capturing | processing | done | error
   const [sampleCount, setSampleCount] = useState(0);
@@ -75,7 +75,7 @@ export default function Enroll() {
   };
 
   const captureComplete = () => {
-    const kData = keystroke.extractVector();
+    const kData = keystroke.extractVector(PHRASE);
     const mData = mouse.extractVector();
 
     if (!kData) {
@@ -84,7 +84,7 @@ export default function Enroll() {
     }
 
     const vector = buildCombinedVector(kData, mData);
-    const newSamples = [...samples, { vector, keystroke: kData }];
+    const newSamples = [...samples, { vector, keystroke: kData, mouse: mData }];
     setSamples(newSamples);
 
     const newCount = sampleCount + 1;
@@ -122,6 +122,20 @@ export default function Enroll() {
         return vals.reduce((a, b) => a + b, 0) / vals.length;
       });
     };
+    
+    // Helper: Z-score normalize an array
+    const zNormalize = (arr) => {
+      if (!arr || arr.length < 2) return arr || [];
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((acc, v) => acc + (v - mean) ** 2, 0) / arr.length;
+      const std = Math.sqrt(variance);
+      if (std === 0) return arr.map(() => 0);
+      return arr.map(v => (v - mean) / std);
+    };
+    
+    const holdTimes = avgArr('holdTimes');
+    const flightTimes = avgArr('flightTimes');
+    
     return {
       avgHoldTime:    scalar('avgHoldTime'),
       stdHoldTime:    scalar('stdHoldTime'),
@@ -130,8 +144,54 @@ export default function Enroll() {
       totalDuration:  scalar('totalDuration'),
       rhythmVariance: scalar('rhythmVariance'),
       errorRate:      scalar('errorRate'),
-      holdTimes:      avgArr('holdTimes'),
-      flightTimes:    avgArr('flightTimes'),
+      holdTimes:      holdTimes,
+      flightTimes:    flightTimes,
+      holdTimesZ:     zNormalize(holdTimes),
+      flightTimesZ:   zNormalize(flightTimes),
+    };
+  };
+
+  const averageMouse = (samples) => {
+    if (!samples.length) return null;
+    const scalar = (key) => samples.reduce((sum, s) => sum + (s?.[key] ?? 0), 0) / samples.length;
+    const avgArr = (key) => {
+      const maxLen = Math.max(...samples.map(s => (s?.[key] || []).length));
+      if (maxLen === 0) return [];
+      return Array.from({ length: maxLen }, (_, i) => {
+        const vals = samples
+          .map(s => (s?.[key] || [])[i])
+          .filter(v => v !== undefined);
+        if (!vals.length) return 0;
+        return vals.reduce((a, b) => a + b, 0) / vals.length;
+      });
+    };
+
+    const velocities   = avgArr('velocities');
+    const angleDiffs   = avgArr('angleDiffs');
+    const dts          = avgArr('dts');
+
+    const zNormalize = (arr) => {
+      if (!arr || arr.length < 2) return arr || [];
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((acc, v) => acc + (v - mean) ** 2, 0) / arr.length;
+      const std = Math.sqrt(variance);
+      if (std === 0) return arr.map(() => 0);
+      return arr.map(v => (v - mean) / std);
+    };
+
+    return {
+      avgVelocity:       scalar('avgVelocity'),
+      velocityVariance:  scalar('velocityVariance'),
+      avgAcceleration:   scalar('avgAcceleration'),
+      directionChanges:  scalar('directionChanges'),
+      avgAngleChange:    scalar('avgAngleChange'),
+      angleChangeStd:    scalar('angleChangeStd'),
+      avgClickHold:      scalar('avgClickHold'),
+      velocities,
+      angleDiffs,
+      dts,
+      velocitiesZ: zNormalize(velocities),
+      angleDiffsZ: zNormalize(angleDiffs),
     };
   };
 
@@ -139,12 +199,14 @@ export default function Enroll() {
     setPhase('processing');
     setStatusMsg('Averaging 3 samples into Behavioural DNA...');
 
-    const finalVector = avgVector(sampleList);
-    const avgKeystroke = averageKeystroke(sampleList.map(s => s.keystroke));
+    const finalVector   = avgVector(sampleList);
+    const avgKeystroke  = averageKeystroke(sampleList.map(s => s.keystroke));
+    const avgMouse      = averageMouse(sampleList.map(s => s.mouse).filter(Boolean));
     const hash = vectorToHash(finalVector);
 
     setEnrollmentVector(finalVector);
     setEnrollmentKeystroke(avgKeystroke);
+    setEnrollmentMouse(avgMouse || null);
 
     try {
       if (demoMode) {
