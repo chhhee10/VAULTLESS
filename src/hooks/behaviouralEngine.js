@@ -1,274 +1,226 @@
-// ============================================================
-// FILE: src/hooks/behaviouralEngine.js
-// ============================================================
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { ethers } from 'ethers'
+import { useState, useRef, useCallback } from 'react';
 
-// ── Keystroke capture hook ──────────────────────────────────
+// ─── Keystroke DNA Hook ───────────────────────────────────────────────────────
 export function useKeystrokeDNA() {
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [graphData, setGraphData] = useState([])
-  const keyDownTimes = useRef({})
-  const holdTimes = useRef([])
-  const flightTimes = useRef([])
-  const lastKeyUpTime = useRef(null)
-  const startTime = useRef(null)
-  const backspaceCount = useRef(0)
-  const captureBuffer = useRef([])
-
-  const startCapture = useCallback(() => {
-    keyDownTimes.current = {}
-    holdTimes.current = []
-    flightTimes.current = []
-    lastKeyUpTime.current = null
-    startTime.current = Date.now()
-    backspaceCount.current = 0
-    captureBuffer.current = []
-    setGraphData([])
-    setIsCapturing(true)
-    console.log('[VAULTLESS] Keystroke capture started')
-  }, [])
+  const [events, setEvents] = useState([]);
+  const keyDownTimes = useRef({});
+  const lastKeyUpTime = useRef(null);
+  const rawEvents = useRef([]);
 
   const onKeyDown = useCallback((e) => {
-    if (!isCapturing) return
-    const key = e.key
-    const now = performance.now()
-    if (!keyDownTimes.current[key]) {
-      keyDownTimes.current[key] = now
-    }
-    if (key === 'Backspace') backspaceCount.current++
-    if (lastKeyUpTime.current !== null) {
-      const flight = now - lastKeyUpTime.current
-      if (flight > 0 && flight < 2000) {
-        flightTimes.current.push(flight)
-        // Update graph data live
-        setGraphData(prev => [...prev.slice(-40), { t: Date.now(), v: Math.min(flight, 500) }])
-      }
-    }
-  }, [isCapturing])
+    keyDownTimes.current[e.key] = performance.now();
+  }, []);
 
   const onKeyUp = useCallback((e) => {
-    if (!isCapturing) return
-    const key = e.key
-    const now = performance.now()
-    if (keyDownTimes.current[key]) {
-      const hold = now - keyDownTimes.current[key]
-      if (hold > 0 && hold < 1000) {
-        holdTimes.current.push({ key, duration: hold })
-      }
-      delete keyDownTimes.current[key]
-    }
-    lastKeyUpTime.current = now
-    captureBuffer.current.push({ key, timestamp: now })
-  }, [isCapturing])
+    const now = performance.now();
+    const holdTime = keyDownTimes.current[e.key]
+      ? now - keyDownTimes.current[e.key]
+      : 0;
+    const flightTime = lastKeyUpTime.current
+      ? keyDownTimes.current[e.key] - lastKeyUpTime.current
+      : 0;
 
-  const stopCapture = useCallback(() => {
-    setIsCapturing(false)
-    const totalDuration = startTime.current ? Date.now() - startTime.current : 0
-    const holds = holdTimes.current.map(h => h.duration)
-    const flights = flightTimes.current
+    const event = {
+      key: e.key,
+      holdTime,
+      flightTime: Math.max(0, flightTime),
+      timestamp: now,
+    };
 
-    const result = {
-      holdTimes: holdTimes.current,
-      flightTimes: flights,
+    rawEvents.current.push(event);
+    lastKeyUpTime.current = now;
+    setEvents([...rawEvents.current]);
+  }, []);
+
+  const reset = useCallback(() => {
+    rawEvents.current = [];
+    keyDownTimes.current = {};
+    lastKeyUpTime.current = null;
+    setEvents([]);
+  }, []);
+
+  const extractVector = useCallback(() => {
+    const evts = rawEvents.current;
+    if (evts.length < 3) return null;
+
+    const holdTimes = evts.map(e => e.holdTime);
+    const flightTimes = evts.filter(e => e.flightTime > 0).map(e => e.flightTime);
+    const totalDuration = evts.length > 1
+      ? evts[evts.length - 1].timestamp - evts[0].timestamp
+      : 0;
+    const errorRate = evts.filter(e => e.key === 'Backspace').length / evts.length;
+
+    return {
+      avgHoldTime: mean(holdTimes),
+      stdHoldTime: std(holdTimes),
+      avgFlightTime: mean(flightTimes),
+      stdFlightTime: std(flightTimes),
       totalDuration,
-      errorRate: backspaceCount.current / Math.max(captureBuffer.current.length, 1),
-      avgHold: mean(holds),
-      stdHold: std(holds),
-      avgFlight: mean(flights),
-      stdFlight: std(flights),
-      rhythmVariance: variance(flights),
-    }
-    console.log('[VAULTLESS] Keystroke capture result:', result)
-    return result
-  }, [])
+      rhythmVariance: std(flightTimes),
+      errorRate,
+      holdTimes: holdTimes.slice(0, 20), // per-key signature
+    };
+  }, []);
 
-  const getLiveGraphData = useCallback(() => graphData, [graphData])
-
-  return { isCapturing, onKeyDown, onKeyUp, startCapture, stopCapture, getLiveGraphData, graphData }
+  return { events, onKeyDown, onKeyUp, reset, extractVector };
 }
 
-// ── Mouse capture hook ──────────────────────────────────────
+// ─── Mouse DNA Hook ───────────────────────────────────────────────────────────
 export function useMouseDNA() {
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [mouseGraphData, setMouseGraphData] = useState([])
-  const positions = useRef([])
-  const clickStart = useRef(null)
-  const clickHolds = useRef([])
-  const lastPos = useRef(null)
-  const lastTime = useRef(null)
-  const velocities = useRef([])
-  const accelerations = useRef([])
-  const directionChanges = useRef(0)
-  const lastDirection = useRef(null)
-
-  const startCapture = useCallback(() => {
-    positions.current = []
-    clickStart.current = null
-    clickHolds.current = []
-    lastPos.current = null
-    lastTime.current = null
-    velocities.current = []
-    accelerations.current = []
-    directionChanges.current = 0
-    lastDirection.current = null
-    setMouseGraphData([])
-    setIsCapturing(true)
-  }, [])
+  const [active, setActive] = useState(false);
+  const points = useRef([]);
+  const lastPoint = useRef(null);
+  const mouseDownTime = useRef(null);
+  const clickHolds = useRef([]);
 
   const onMouseMove = useCallback((e) => {
-    if (!isCapturing) return
-    const now = performance.now()
-    const x = e.clientX, y = e.clientY
-    if (lastPos.current && lastTime.current) {
-      const dx = x - lastPos.current.x
-      const dy = y - lastPos.current.y
-      const dt = now - lastTime.current
-      if (dt > 0) {
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        const vel = dist / dt
-        velocities.current.push(vel)
-        if (velocities.current.length > 1) {
-          const prevVel = velocities.current[velocities.current.length - 2]
-          accelerations.current.push(Math.abs(vel - prevVel) / dt)
-        }
-        // Direction change detection
-        const angle = Math.atan2(dy, dx)
-        if (lastDirection.current !== null) {
-          const angleDiff = Math.abs(angle - lastDirection.current)
-          if (angleDiff > 0.5) directionChanges.current++
-        }
-        lastDirection.current = angle
-        setMouseGraphData(prev => [...prev.slice(-40), { t: Date.now(), v: Math.min(vel * 100, 500) }])
-      }
+    if (!active) return;
+    const now = performance.now();
+    const point = { x: e.clientX, y: e.clientY, t: now };
+    if (lastPoint.current) {
+      const dx = point.x - lastPoint.current.x;
+      const dy = point.y - lastPoint.current.y;
+      const dt = point.t - lastPoint.current.t;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const velocity = dt > 0 ? dist / dt : 0;
+      const angle = Math.atan2(dy, dx);
+      points.current.push({ velocity, angle, dt });
     }
-    lastPos.current = { x, y }
-    lastTime.current = now
-  }, [isCapturing])
+    lastPoint.current = point;
+  }, [active]);
 
   const onMouseDown = useCallback(() => {
-    if (!isCapturing) return
-    clickStart.current = performance.now()
-  }, [isCapturing])
+    mouseDownTime.current = performance.now();
+  }, []);
 
   const onMouseUp = useCallback(() => {
-    if (!isCapturing || !clickStart.current) return
-    const hold = performance.now() - clickStart.current
-    clickHolds.current.push(hold)
-    clickStart.current = null
-  }, [isCapturing])
-
-  const stopCapture = useCallback(() => {
-    setIsCapturing(false)
-    const vels = velocities.current
-    const accels = accelerations.current
-    const result = {
-      avgVelocity: mean(vels),
-      velocityVariance: variance(vels),
-      avgAcceleration: mean(accels),
-      directionChanges: directionChanges.current,
-      clickHoldDuration: mean(clickHolds.current) || 0,
+    if (mouseDownTime.current) {
+      clickHolds.current.push(performance.now() - mouseDownTime.current);
+      mouseDownTime.current = null;
     }
-    console.log('[VAULTLESS] Mouse capture result:', result)
-    return result
-  }, [])
+  }, []);
 
-  return { isCapturing, onMouseMove, onMouseDown, onMouseUp, startCapture, stopCapture, mouseGraphData }
+  const startCapture = useCallback(() => {
+    points.current = [];
+    lastPoint.current = null;
+    clickHolds.current = [];
+    setActive(true);
+  }, []);
+
+  const stopCapture = useCallback(() => setActive(false), []);
+
+  const reset = useCallback(() => {
+    points.current = [];
+    lastPoint.current = null;
+    clickHolds.current = [];
+    setActive(false);
+  }, []);
+
+  const extractVector = useCallback(() => {
+    const pts = points.current;
+    if (pts.length < 5) return null;
+
+    const velocities = pts.map(p => p.velocity);
+    const angles = pts.map(p => p.angle);
+
+    // direction changes
+    let dirChanges = 0;
+    for (let i = 1; i < angles.length; i++) {
+      if (Math.abs(angles[i] - angles[i - 1]) > 0.5) dirChanges++;
+    }
+
+    return {
+      avgVelocity: mean(velocities),
+      velocityVariance: std(velocities),
+      avgAcceleration: meanAcceleration(velocities),
+      directionChanges: dirChanges / Math.max(pts.length, 1),
+      avgClickHold: mean(clickHolds.current),
+    };
+  }, []);
+
+  return { onMouseMove, onMouseDown, onMouseUp, startCapture, stopCapture, reset, extractVector };
 }
 
-// ── Combined vector & similarity ────────────────────────────
-export function combinedVector(keystrokeData, mouseData) {
-  const vec = new Float32Array(64)
+// ─── Combined Vector & Similarity ────────────────────────────────────────────
+export function buildCombinedVector(keystroke, mouse) {
+  // Keystroke features (10 base + 20 per-key = 30 dims)
+  const kFeatures = [
+    norm(keystroke.avgHoldTime, 0, 500),
+    norm(keystroke.stdHoldTime, 0, 200),
+    norm(keystroke.avgFlightTime, 0, 800),
+    norm(keystroke.stdFlightTime, 0, 400),
+    norm(keystroke.totalDuration, 0, 15000),
+    norm(keystroke.rhythmVariance, 0, 400),
+    norm(keystroke.errorRate, 0, 0.5),
+    0, 0, 0, // padding
+    ...padOrTrim(keystroke.holdTimes.map(h => norm(h, 0, 500)), 20),
+  ];
 
-  // [0–19] hold times per key (first 20 unique keys)
-  const holdMap = {}
-  for (const h of (keystrokeData.holdTimes || [])) {
-    if (!holdMap[h.key]) holdMap[h.key] = []
-    holdMap[h.key].push(h.duration)
-  }
-  const holdKeys = Object.keys(holdMap).slice(0, 20)
-  holdKeys.forEach((k, i) => { vec[i] = mean(holdMap[k]) || 0 })
+  // Mouse features (5 dims, padded to 34)
+  const mFeatures = mouse ? [
+    norm(mouse.avgVelocity, 0, 5),
+    norm(mouse.velocityVariance, 0, 3),
+    norm(mouse.avgAcceleration, 0, 2),
+    norm(mouse.directionChanges, 0, 1),
+    norm(mouse.avgClickHold, 0, 1000),
+    ...new Array(29).fill(0),
+  ] : new Array(34).fill(0);
 
-  // [20–39] flight times (first 20 flights)
-  const flights = (keystrokeData.flightTimes || []).slice(0, 20)
-  flights.forEach((f, i) => { vec[20 + i] = f })
-
-  // [40–45] summary stats
-  vec[40] = keystrokeData.avgHold || 0
-  vec[41] = keystrokeData.stdHold || 0
-  vec[42] = keystrokeData.avgFlight || 0
-  vec[43] = keystrokeData.stdFlight || 0
-  vec[44] = Math.min(keystrokeData.totalDuration || 0, 10000)
-  vec[45] = keystrokeData.rhythmVariance || 0
-
-  // [46–50] mouse dynamics
-  vec[46] = (mouseData?.avgVelocity || 0) * 100
-  vec[47] = (mouseData?.velocityVariance || 0) * 100
-  vec[48] = (mouseData?.avgAcceleration || 0) * 1000
-  vec[49] = Math.min(mouseData?.directionChanges || 0, 200)
-  vec[50] = mouseData?.clickHoldDuration || 0
-
-  // Normalize 0–1
-  const maxVal = Math.max(...Array.from(vec), 1)
-  for (let i = 0; i < 64; i++) vec[i] = vec[i] / maxVal
-
-  console.log('[VAULTLESS] Combined vector created, non-zero elements:', Array.from(vec).filter(v => v > 0).length)
-  return vec
+  return new Float32Array([...kFeatures, ...mFeatures]); // 64 dims
 }
 
 export function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0
-
-  // Weighted dot product: hold times [0-19] weight 3x, flight times [20-39] weight 2x, rest 1x
-  let dot = 0, magA = 0, magB = 0
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
-    let w = 1
-    if (i < 20) w = 3
-    else if (i < 40) w = 2
-    dot += w * a[i] * b[i]
-    magA += w * a[i] * a[i]
-    magB += w * b[i] * b[i]
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
   }
-  if (magA === 0 || magB === 0) return 0
-  const similarity = dot / (Math.sqrt(magA) * Math.sqrt(magB))
-  console.log('[VAULTLESS] Cosine similarity:', similarity.toFixed(4))
-  return Math.max(0, Math.min(1, similarity))
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-export function stressDetector(liveRhythmVariance, enrollmentRhythmVariance) {
-  if (!enrollmentRhythmVariance || enrollmentRhythmVariance === 0) return false
-  const ratio = liveRhythmVariance / enrollmentRhythmVariance
-  const isStressed = ratio > 2
-  console.log('[VAULTLESS] Stress detection — ratio:', ratio.toFixed(2), 'stressed:', isStressed)
-  return isStressed
+export function detectStress(liveKeystroke, enrollmentKeystroke) {
+  if (!liveKeystroke || !enrollmentKeystroke) return false;
+  const baseVariance = enrollmentKeystroke.rhythmVariance || 1;
+  const liveVariance = liveKeystroke.rhythmVariance || 0;
+  return liveVariance > baseVariance * 2;
 }
 
-export function vectorToHash(vector) {
-  const bytes = new Uint8Array(vector.buffer)
-  const hex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
-  return ethers.keccak256(hex)
+export function classifyScore(score, isStress) {
+  if (score > 0.85 && !isStress) return 'authenticated';
+  if (score >= 0.55 || isStress) return 'duress';
+  return 'rejected';
 }
 
-export function generateNullifier(vector, timestamp) {
-  const data = ethers.AbiCoder.defaultAbiCoder().encode(
-    ['bytes32', 'uint256'],
-    [vectorToHash(vector), BigInt(timestamp)]
-  )
-  return ethers.keccak256(data)
-}
-
-// ── Math helpers ─────────────────────────────────────────────
+// ─── Math Utilities ───────────────────────────────────────────────────────────
 function mean(arr) {
-  if (!arr || arr.length === 0) return 0
-  return arr.reduce((a, b) => a + b, 0) / arr.length
-}
-
-function variance(arr) {
-  if (!arr || arr.length < 2) return 0
-  const m = mean(arr)
-  return mean(arr.map(x => (x - m) ** 2))
+  if (!arr || arr.length === 0) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
 function std(arr) {
-  return Math.sqrt(variance(arr))
+  if (!arr || arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((acc, v) => acc + (v - m) ** 2, 0) / arr.length);
+}
+
+function meanAcceleration(velocities) {
+  if (velocities.length < 2) return 0;
+  const accels = [];
+  for (let i = 1; i < velocities.length; i++) {
+    accels.push(Math.abs(velocities[i] - velocities[i - 1]));
+  }
+  return mean(accels);
+}
+
+function norm(val, min, max) {
+  if (max === min) return 0;
+  return Math.min(1, Math.max(0, (val - min) / (max - min)));
+}
+
+function padOrTrim(arr, len) {
+  if (arr.length >= len) return arr.slice(0, len);
+  return [...arr, ...new Array(len - arr.length).fill(0)];
 }

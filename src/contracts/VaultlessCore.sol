@@ -1,6 +1,3 @@
-// ============================================================
-// FILE: src/contracts/VaultlessCore.sol
-// ============================================================
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -16,38 +13,63 @@ contract VaultlessCore {
     mapping(bytes32 => bool) public usedNullifiers;
 
     event Registered(address indexed user, uint256 timestamp);
-    event AuthSuccess(address indexed user, bytes32 nullifier);
-    event AuthFailed(address indexed user);
+    event AuthSuccess(address indexed user, bytes32 nullifier, uint256 timestamp);
+    event AuthFailed(address indexed user, uint256 timestamp);
     event DuressActivated(address indexed user, uint256 timestamp);
+    event Refined(address indexed user, uint256 timestamp);
+
+    modifier onlyRegistered() {
+        require(identities[msg.sender].exists, "Not registered");
+        _;
+    }
+
+    modifier notLocked() {
+        require(!identities[msg.sender].isLocked, "Account locked");
+        _;
+    }
 
     function register(bytes32 commitmentHash) external {
         require(!identities[msg.sender].exists, "Already registered");
-        identities[msg.sender] = Identity(commitmentHash, block.timestamp, false, true);
+        identities[msg.sender] = Identity({
+            commitmentHash: commitmentHash,
+            enrolledAt: block.timestamp,
+            isLocked: false,
+            exists: true
+        });
         emit Registered(msg.sender, block.timestamp);
     }
 
-    function authenticate(bytes32 nullifier) external returns (bool) {
-        require(identities[msg.sender].exists, "Not registered");
-        require(!identities[msg.sender].isLocked, "Account locked");
-        require(!usedNullifiers[nullifier], "Nullifier already used");
+    function authenticate(bytes32 nullifier) external onlyRegistered notLocked {
+        require(!usedNullifiers[nullifier], "Nullifier already used — replay attack blocked");
         usedNullifiers[nullifier] = true;
-        emit AuthSuccess(msg.sender, nullifier);
-        return true;
+        emit AuthSuccess(msg.sender, nullifier, block.timestamp);
     }
 
-    function triggerDuress() external {
-        require(identities[msg.sender].exists, "Not registered");
+    function authFailed() external onlyRegistered {
+        emit AuthFailed(msg.sender, block.timestamp);
+    }
+
+    function triggerDuress() external onlyRegistered {
         identities[msg.sender].isLocked = true;
         emit DuressActivated(msg.sender, block.timestamp);
     }
 
-    function refine(bytes32 newHash) external {
-        require(identities[msg.sender].exists && !identities[msg.sender].isLocked, "Cannot refine");
+    function refine(bytes32 newHash) external onlyRegistered notLocked {
         identities[msg.sender].commitmentHash = newHash;
+        emit Refined(msg.sender, block.timestamp);
     }
 
-    function authFailed() external {
-        require(identities[msg.sender].exists, "Not registered");
-        emit AuthFailed(msg.sender);
+    function getIdentity(address user) external view returns (
+        bytes32 commitmentHash,
+        uint256 enrolledAt,
+        bool isLocked,
+        bool exists
+    ) {
+        Identity memory id = identities[user];
+        return (id.commitmentHash, id.enrolledAt, id.isLocked, id.exists);
+    }
+
+    function isNullifierUsed(bytes32 nullifier) external view returns (bool) {
+        return usedNullifiers[nullifier];
     }
 }

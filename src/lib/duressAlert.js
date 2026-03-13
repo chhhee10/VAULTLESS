@@ -1,39 +1,36 @@
-// ============================================================
-// FILE: src/lib/duressAlert.js
-// ============================================================
-import emailjs from '@emailjs/browser'
+// Setup: Create free account at emailjs.com
+// Add your Service ID, Template ID, and Public Key to .env
 
-export async function sendDuressAlert({ walletAddress, timestamp, etherscanLink }) {
-  const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
-  const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
-  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-  const alertEmail = import.meta.env.VITE_ALERT_EMAIL
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'YOUR_SERVICE_ID';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID';
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY';
+const ALERT_EMAIL = import.meta.env.VITE_ALERT_EMAIL || 'alert@example.com';
 
-  if (!serviceId || !templateId || !publicKey || serviceId === 'your_service_id') {
-    console.warn('[VAULTLESS] EmailJS not configured — duress alert skipped in demo mode')
-    console.log('[VAULTLESS] DURESS ALERT WOULD SEND:', {
-      to: alertEmail,
-      wallet: walletAddress,
-      timestamp: new Date(timestamp).toISOString(),
-      etherscanLink,
-    })
-    return { status: 'demo', message: 'EmailJS not configured' }
-  }
-
+export async function sendDuressAlert({ address, txHash, timestamp }) {
   try {
-    const templateParams = {
-      to_email: alertEmail,
-      wallet_address: walletAddress || 'Unknown',
-      timestamp: new Date(timestamp).toISOString(),
-      etherscan_link: etherscanLink || 'N/A',
-      message: `VAULTLESS DURESS ALERT: Coercion attack detected at ${new Date(timestamp).toLocaleString()}. Wallet: ${walletAddress}. Account has been locked. View on Etherscan: ${etherscanLink}`,
-    }
+    // Dynamically load EmailJS to avoid bundle bloat
+    const emailjs = await import('@emailjs/browser');
 
-    const result = await emailjs.send(serviceId, templateId, templateParams, publicKey)
-    console.log('[VAULTLESS] Duress alert sent successfully:', result.status, result.text)
-    return result
-  } catch (error) {
-    console.error('[VAULTLESS] Duress alert failed:', error)
-    throw error
+    const etherscanLink = `https://sepolia.etherscan.io/tx/${txHash}`;
+
+    await emailjs.send(
+      SERVICE_ID,
+      TEMPLATE_ID,
+      {
+        to_email: ALERT_EMAIL,
+        subject: '🚨 VAULTLESS DURESS ALERT',
+        wallet_address: address,
+        timestamp: new Date(timestamp).toLocaleString(),
+        etherscan_link: etherscanLink,
+        message: `DURESS PROTOCOL ACTIVATED\n\nWallet: ${address}\nTime: ${new Date(timestamp).toLocaleString()}\nEtherscan: ${etherscanLink}\n\nThe account has been locked. A ghost session was loaded for the attacker.`,
+      },
+      PUBLIC_KEY
+    );
+
+    console.log('[VAULTLESS] Duress alert sent successfully');
+    return true;
+  } catch (err) {
+    console.error('[VAULTLESS] Failed to send duress alert:', err);
+    return false;
   }
 }

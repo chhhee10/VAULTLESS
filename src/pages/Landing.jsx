@@ -1,366 +1,303 @@
-// ============================================================
-// FILE: src/pages/Landing.jsx
-// ============================================================
-import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion, useInView, useSpring, useTransform, AnimatePresence } from 'framer-motion'
-import PageShell from '../components/PageShell.jsx'
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useVaultless } from '../lib/VaultlessContext';
 
-// ── Particle Canvas ─────────────────────────────────────────
-function ParticleCanvas() {
-  const canvasRef = useRef(null)
+export default function Landing() {
+  const navigate = useNavigate();
+  const { demoMode, setDemoMode } = useVaultless();
+  const [visible, setVisible] = useState(false);
+  const canvasRef = useRef(null);
+
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    let animId
-    const particles = []
-    const COUNT = 100
-    function resize() {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-    for (let i = 0; i < COUNT; i++) {
-      const isCyan = Math.random() < 0.1
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        r: 1.5,
-        color: isCyan ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,136,0.6)',
-      })
-    }
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i]
-        p.x += p.vx; p.y += p.vy
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = p.color
-        ctx.fill()
-        for (let j = i + 1; j < particles.length; j++) {
-          const q = particles[j]
-          const dx = p.x - q.x, dy = p.y - q.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 140) {
-            ctx.beginPath()
-            ctx.moveTo(p.x, p.y)
-            ctx.lineTo(q.x, q.y)
-            ctx.strokeStyle = `rgba(0,255,136,${0.08 * (1 - dist / 140)})`
-            ctx.lineWidth = 0.5
-            ctx.stroke()
-          }
+    setTimeout(() => setVisible(true), 100);
+    const cleanup = animateParticles(canvasRef.current);
+    return cleanup;
+  }, []);
+
+  return (
+    <div style={s.root}>
+      <canvas ref={canvasRef} style={s.canvas} />
+      <div style={s.scanline} />
+
+      {/* Demo toggle */}
+      <div style={s.demoToggle}>
+        <span style={s.demoLabel}>DEMO MODE</span>
+        <button
+          style={{ ...s.toggle, background: demoMode ? '#00ff88' : '#333' }}
+          onClick={() => setDemoMode(!demoMode)}
+        >
+          {demoMode ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
+      <div style={{
+        ...s.hero,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(30px)',
+        transition: 'all 0.9s ease',
+      }}>
+
+        {/* Badge */}
+        <div style={s.badge}>
+          <span style={s.badgeDot} />
+          <span style={s.badgeText}>LIVE ON ETHEREUM SEPOLIA</span>
+        </div>
+
+        {/* Headline */}
+        <h1 style={s.headline}>
+          <span style={s.hl1}>Your password</span>
+          <br />
+          <span style={s.hl2}>is how you move.</span>
+        </h1>
+
+        {/* Sub */}
+        <p style={s.sub}>
+          It can't be stolen. It can't be copied. And if someone forces you to use it — they've already lost.
+        </p>
+
+        {/* CTAs */}
+        <div style={s.actions}>
+          <button
+            style={s.ctaPrimary}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            onClick={() => navigate('/gmail')}
+          >
+            Get Started →
+          </button>
+          <a
+            href="https://sepolia.etherscan.io"
+            target="_blank"
+            rel="noreferrer"
+            style={s.ctaSecondary}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,255,136,0.6)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0,255,136,0.25)'}
+          >
+            View on Etherscan ↗
+          </a>
+        </div>
+
+        {/* Counter */}
+        <div style={s.counter}>⬡ 0 identities enrolled on-chain</div>
+
+        {/* Feature cards */}
+        <div style={s.cards}>
+          {[
+            { title: 'Behavioural DNA', desc: 'Keystroke timing + mouse dynamics. 64-dimensional vector unique to you. No biometric stored anywhere.', tag: 'Float32Array[64]', tagColor: '#00d4ff' },
+            { title: 'Ethereum Trust Layer', desc: 'Every auth event, failed attempt, and duress trigger logged permanently on Sepolia. Immutable. Public. Forever.', tag: 'keccak256 · Sepolia', tagColor: '#00d4ff' },
+            { title: 'Anti-Coercion Protocol', desc: 'Stress signature detected in rhythm. Ghost session loads. Real account locks silently. Blockchain records the attack.', tag: 'DuressActivated · on-chain', tagColor: '#ff6b35' },
+          ].map(card => (
+            <div key={card.title} style={s.card}>
+              <div style={s.cardTopEdge} />
+              <div style={{ color: '#00ff88', fontSize: 20, marginBottom: 12 }}>⬡</div>
+              <div style={s.cardTitle}>{card.title}</div>
+              <div style={s.cardDesc}>{card.desc}</div>
+              <div style={{ ...s.cardTag, color: card.tagColor }}>{card.tag}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stats bar */}
+        <div style={s.statsBar}>
+          {[
+            { num: '1.8B', label: 'passwords stolen last year' },
+            { num: '0', label: 'databases in VAULTLESS' },
+            { num: '∞', label: 'auth records on Ethereum' },
+          ].map((stat, i) => (
+            <div key={stat.label} style={{ display: 'flex', alignItems: 'center' }}>
+              {i > 0 && <div style={s.statDivider} />}
+              <div style={s.stat}>
+                <div style={s.statNum}>{stat.num}</div>
+                <div style={s.statLabel}>{stat.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function animateParticles(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let animId;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const particles = Array.from({ length: 100 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 1.5 + 0.5,
+    cyan: Math.random() < 0.1,
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.cyan ? 'rgba(0,212,255,0.5)' : 'rgba(0,255,136,0.55)';
+      ctx.fill();
+      for (let j = i + 1; j < particles.length; j++) {
+        const q = particles[j];
+        const dx = p.x - q.x, dy = p.y - q.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 140) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(q.x, q.y);
+          ctx.strokeStyle = `rgba(0,255,136,${0.07 * (1 - dist / 140)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
         }
       }
-      animId = requestAnimationFrame(draw)
     }
-    draw()
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
-}
-
-// ── Waveform SVG animation ──────────────────────────────────
-function WaveformIcon() {
-  return (
-    <svg viewBox="0 0 80 40" className="w-16 h-8">
-      {[0, 1, 2, 3].map(i => (
-        <path
-          key={i}
-          d={`M0 20 Q10 ${5 + i * 4} 20 20 Q30 ${35 - i * 4} 40 20 Q50 ${5 + i * 4} 60 20 Q70 ${35 - i * 4} 80 20`}
-          fill="none"
-          stroke="#00ff88"
-          strokeWidth="1"
-          opacity={0.3 + i * 0.2}
-          style={{ animation: `scan ${1.5 + i * 0.3}s linear infinite alternate` }}
-        />
-      ))}
-    </svg>
-  )
-}
-
-// ── Blockchain blocks SVG ───────────────────────────────────
-function BlockchainIcon() {
-  return (
-    <svg viewBox="0 0 80 28" className="w-16 h-7">
-      {[0, 1, 2].map(i => (
-        <g key={i}>
-          <rect x={i * 28} y="4" width="20" height="20" rx="3" fill="none" stroke="#00ff88" strokeWidth="1.5" opacity={0.6 + i * 0.2} />
-          {i < 2 && <line x1={i * 28 + 20} y1="14" x2={i * 28 + 28} y2="14" stroke="#00ff88" strokeWidth="1" opacity="0.5" markerEnd="url(#arr)" />}
-        </g>
-      ))}
-      <defs>
-        <marker id="arr" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
-          <path d="M0,0 L4,2 L0,4" fill="none" stroke="#00ff88" strokeWidth="1" />
-        </marker>
-      </defs>
-    </svg>
-  )
-}
-
-// ── Lock + wave SVG ─────────────────────────────────────────
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 80 40" className="w-16 h-8">
-      <rect x="25" y="18" width="30" height="18" rx="3" fill="none" stroke="#ff6b35" strokeWidth="1.5" opacity="0.8" />
-      <path d="M33 18 V14 A7 7 0 0 1 47 14 V18" fill="none" stroke="#ff6b35" strokeWidth="1.5" opacity="0.8" />
-      <path d="M0 25 Q20 10 40 25 Q60 40 80 25" fill="none" stroke="#ff6b35" strokeWidth="1" opacity="0.4"
-        style={{ animation: 'scan 2s linear infinite alternate' }} />
-    </svg>
-  )
-}
-
-// ── Stats counter ───────────────────────────────────────────
-function StatCounter({ value, label, suffix = '' }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true })
-  const spring = useSpring(0, { stiffness: 60, damping: 20 })
-  const display = useTransform(spring, v => {
-    if (value === '∞') return '∞'
-    if (value === '0') return '0'
-    return Math.round(v).toLocaleString() + suffix
-  })
-  useEffect(() => {
-    if (inView && typeof value === 'string' && value !== '∞' && value !== '0') {
-      spring.set(parseFloat(value.replace(/[^0-9.]/g, '')))
-    }
-  }, [inView])
-
-  return (
-    <div ref={ref} className="text-center px-8">
-      <motion.div className="text-4xl font-['Space_Grotesk'] font-bold text-gradient-green mb-1">
-        {value === '∞' || value === '0' ? value : <motion.span>{display}</motion.span>}
-        {value !== '∞' && suffix && <span>{suffix}</span>}
-      </motion.div>
-      <div className="text-sm text-[#4a4a5a] font-['Inter']">{label}</div>
-    </div>
-  )
-}
-
-// ── Feature Card ─────────────────────────────────────────────
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-}
-
-function FeatureCard({ icon, title, body, footerTag, footerColor = '#00d4ff', delay = 0 }) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0,255,136,0.15)' }}
-      className="relative rounded-2xl overflow-hidden p-6"
-      style={{
-        background: 'linear-gradient(135deg, rgba(13,13,15,0.9) 0%, rgba(20,20,24,0.9) 100%)',
-        border: '1px solid rgba(0,255,136,0.12)',
-        boxShadow: '0 0 0 1px rgba(0,255,136,0.05), 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(20px)',
-      }}
-    >
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,255,136,0.4), transparent)' }} />
-      <div className="mb-4">{icon}</div>
-      <h3 className="font-['Space_Grotesk'] font-bold text-lg text-[#e8e8f0] mb-2">{title}</h3>
-      <p className="font-['Inter'] text-sm text-[#6a6a7a] leading-relaxed mb-4">{body}</p>
-      <div style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: footerColor, opacity: 0.8 }}>{footerTag}</div>
-    </motion.div>
-  )
-}
-
-// ── Landing Page ─────────────────────────────────────────────
-export default function Landing() {
-  const navigate = useNavigate()
-  const featuresRef = useRef(null)
-  const featuresInView = useInView(featuresRef, { once: true, margin: '-100px' })
-
-  const containerVariants = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.12 } },
+    animId = requestAnimationFrame(draw);
   }
-
-  return (
-    <PageShell>
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -16 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        {/* ── HERO ─────────────────────────────────────────── */}
-        <section className="relative flex flex-col items-center justify-center min-h-screen text-center px-6 overflow-hidden">
-          <ParticleCanvas />
-          <div className="relative z-10 flex flex-col items-center">
-            {/* Status badge */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8"
-              style={{ background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)' }}
-            >
-              <span className="w-2 h-2 rounded-full bg-[#00ff88] dot-pulse" />
-              <span className="font-['JetBrains_Mono'] text-xs text-[#00ff88] tracking-wider">LIVE ON ETHEREUM SEPOLIA</span>
-            </motion.div>
-
-            {/* Main headline */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-              className="mb-6"
-            >
-              <motion.h1
-                variants={cardVariants}
-                className="font-['Space_Grotesk'] font-bold text-7xl md:text-8xl text-[#e8e8f0] leading-tight"
-                style={{ letterSpacing: '-0.03em' }}
-              >
-                Your password
-              </motion.h1>
-              <motion.h1
-                variants={cardVariants}
-                className="font-['Space_Grotesk'] font-bold text-7xl md:text-8xl text-gradient-green leading-tight glitch"
-                data-text="is how you move."
-                style={{ letterSpacing: '-0.03em' }}
-              >
-                is how you move.
-              </motion.h1>
-            </motion.div>
-
-            {/* Subheadline */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="text-[#9898a8] text-xl max-w-2xl leading-relaxed mb-10 font-['Inter']"
-            >
-              It can't be stolen. It can't be copied. And if someone forces you to use it — they've already lost.
-            </motion.p>
-
-            {/* CTA buttons */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="flex gap-4 mb-8 flex-wrap justify-center"
-            >
-              <motion.button
-                whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0,255,136,0.4)' }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/gmail')}
-                style={{
-                  background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
-                  color: '#000',
-                  fontFamily: 'Space Grotesk',
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  borderRadius: '10px',
-                  padding: '14px 32px',
-                  fontSize: '15px',
-                  boxShadow: '0 0 20px rgba(0,255,136,0.25)',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Get Started →
-              </motion.button>
-              <motion.a
-                href="https://sepolia.etherscan.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ borderColor: 'rgba(0,255,136,0.5)', boxShadow: '0 0 20px rgba(0,255,136,0.1)' }}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid rgba(0,255,136,0.25)',
-                  color: '#00ff88',
-                  borderRadius: '10px',
-                  padding: '14px 28px',
-                  fontFamily: 'Space Grotesk',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-              >
-                View on Etherscan ↗
-              </motion.a>
-            </motion.div>
-
-            {/* Live counter */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
-              style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: '#00ff88', opacity: 0.6 }}
-            >
-              ⬡ 0 identities enrolled on-chain
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ── FEATURE CARDS ────────────────────────────────── */}
-        <section className="px-6 py-24 max-w-6xl mx-auto" ref={featuresRef}>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={featuresInView ? { opacity: 1 } : {}}
-            className="font-['JetBrains_Mono'] text-xs uppercase tracking-[0.2em] text-[#00ff88] mb-3 opacity-70 text-center"
-          >
-            // CORE PROTOCOL LAYERS
-          </motion.p>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate={featuresInView ? 'show' : 'hidden'}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
-          >
-            <FeatureCard
-              icon={<WaveformIcon />}
-              title="Behavioural DNA"
-              body="Every keystroke hold time, every flight gap, every mouse tremor forms a 64-dimensional vector unique to you. Reconstructed fresh. Never stored."
-              footerTag="Float32Array[64]"
-              footerColor="#00d4ff"
-            />
-            <FeatureCard
-              icon={<BlockchainIcon />}
-              title="Ethereum Trust Layer"
-              body="Every auth event, failed attempt, and duress trigger is logged permanently on Sepolia. Immutable. Public. Forever."
-              footerTag="keccak256 · Sepolia"
-              footerColor="#00d4ff"
-            />
-            <FeatureCard
-              icon={<LockIcon />}
-              title="Anti-Coercion Protocol"
-              body="Stress detected in rhythm automatically. Ghost session loads. Real account locks. Blockchain records the attack. You do nothing."
-              footerTag="DuressActivated · on-chain"
-              footerColor="#ff6b35"
-            />
-          </motion.div>
-        </section>
-
-        {/* ── STATS BAR ────────────────────────────────────── */}
-        <section
-          className="py-16 px-6"
-          style={{ background: 'rgba(13,13,15,0.8)', borderTop: '1px solid rgba(0,255,136,0.08)', borderBottom: '1px solid rgba(0,255,136,0.08)' }}
-        >
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-around gap-8">
-            <StatCounter value="1.8B" label="passwords stolen last year" suffix="" />
-            <div className="hidden md:block w-px h-12" style={{ background: 'rgba(0,255,136,0.15)' }} />
-            <StatCounter value="0" label="databases in VAULTLESS" />
-            <div className="hidden md:block w-px h-12" style={{ background: 'rgba(0,255,136,0.15)' }} />
-            <StatCounter value="∞" label="auth records on Ethereum" />
-          </div>
-        </section>
-
-        {/* ── FOOTER ───────────────────────────────────────── */}
-        <footer className="text-center py-12 text-[#4a4a5a] text-xs font-['JetBrains_Mono']">
-          VAULTLESS · Ethereum Sepolia · March 2026 · Behavioural DNA Authentication
-        </footer>
-      </motion.div>
-    </PageShell>
-  )
+  draw();
+  return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
 }
+
+const s = {
+  root: {
+    minHeight: '100vh', background: '#000', color: '#e8e8f0',
+    fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    position: 'relative', overflowX: 'hidden',
+  },
+  canvas: {
+    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+    pointerEvents: 'none', zIndex: 0,
+  },
+  scanline: {
+    position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1,
+    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+  },
+  demoToggle: {
+    position: 'fixed', top: 20, right: 20, zIndex: 100,
+    display: 'flex', alignItems: 'center', gap: 10,
+    background: 'rgba(0,0,0,0.8)', border: '1px solid #222',
+    borderRadius: 8, padding: '8px 14px',
+  },
+  demoLabel: { color: '#555', fontSize: 11, letterSpacing: 2, fontFamily: "'Courier New', monospace" },
+  toggle: {
+    border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+    fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, transition: 'background 0.3s',
+  },
+  hero: {
+    position: 'relative', zIndex: 2,
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    textAlign: 'center', padding: '80px 24px 80px',
+    maxWidth: 960, margin: '0 auto',
+  },
+  badge: {
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)',
+    borderRadius: 100, padding: '7px 18px', marginBottom: 44,
+  },
+  badgeDot: {
+    width: 8, height: 8, borderRadius: '50%',
+    background: '#00ff88', boxShadow: '0 0 8px #00ff88',
+  },
+  badgeText: {
+    fontFamily: "'Courier New', monospace",
+    fontSize: 12, color: '#00ff88', letterSpacing: 3,
+  },
+  headline: { margin: '0 0 28px', lineHeight: 1.05 },
+  hl1: {
+    display: 'block',
+    fontSize: 'clamp(48px, 8vw, 88px)',
+    fontWeight: 700, color: '#e8e8f0',
+    letterSpacing: '-0.03em',
+  },
+  hl2: {
+    display: 'block',
+    fontSize: 'clamp(48px, 8vw, 88px)',
+    fontWeight: 700, letterSpacing: '-0.03em',
+    background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  sub: {
+    color: '#888', fontSize: 20, lineHeight: 1.7,
+    maxWidth: 640, marginBottom: 48, fontWeight: 300,
+  },
+  actions: {
+    display: 'flex', gap: 14, marginBottom: 28,
+    flexWrap: 'wrap', justifyContent: 'center',
+  },
+  ctaPrimary: {
+    background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
+    color: '#000', border: 'none', padding: '15px 36px',
+    fontSize: 15, fontWeight: 700, letterSpacing: '0.04em',
+    cursor: 'pointer', borderRadius: 10,
+    boxShadow: '0 0 24px rgba(0,255,136,0.3)',
+    transition: 'opacity 0.2s',
+  },
+  ctaSecondary: {
+    background: 'transparent',
+    border: '1px solid rgba(0,255,136,0.25)',
+    color: '#00ff88', padding: '15px 32px',
+    fontSize: 15, fontWeight: 600, borderRadius: 10,
+    cursor: 'pointer', textDecoration: 'none',
+    display: 'inline-flex', alignItems: 'center',
+    transition: 'border-color 0.2s',
+  },
+  counter: {
+    fontFamily: "'Courier New', monospace",
+    fontSize: 12, color: '#00ff88', opacity: 0.5,
+    marginBottom: 80, letterSpacing: 1,
+  },
+  cards: {
+    display: 'flex', gap: 20, flexWrap: 'wrap',
+    justifyContent: 'center', marginBottom: 64, width: '100%',
+  },
+  card: {
+    flex: '1 1 240px', maxWidth: 290,
+    position: 'relative', borderRadius: 16, overflow: 'hidden',
+    padding: '28px 24px', textAlign: 'left',
+    background: 'linear-gradient(135deg, rgba(13,13,15,0.95), rgba(20,20,24,0.95))',
+    border: '1px solid rgba(0,255,136,0.12)',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+  },
+  cardTopEdge: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+    background: 'linear-gradient(90deg, transparent, rgba(0,255,136,0.4), transparent)',
+  },
+  cardTitle: {
+    color: '#e8e8f0', fontSize: 14, fontWeight: 700,
+    letterSpacing: '0.04em', marginBottom: 10,
+  },
+  cardDesc: { color: '#555', fontSize: 13, lineHeight: 1.7, marginBottom: 16 },
+  cardTag: { fontFamily: "'Courier New', monospace", fontSize: 11, opacity: 0.85 },
+  statsBar: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexWrap: 'wrap',
+    background: 'rgba(13,13,15,0.85)',
+    border: '1px solid rgba(0,255,136,0.08)',
+    borderRadius: 16, padding: '32px 40px', width: '100%',
+  },
+  stat: { textAlign: 'center', padding: '0 44px' },
+  statNum: {
+    fontSize: 42, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6,
+    background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  statLabel: { color: '#4a4a5a', fontSize: 13 },
+  statDivider: { width: 1, height: 40, background: 'rgba(0,255,136,0.1)', margin: '0' },
+};

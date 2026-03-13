@@ -1,11 +1,17 @@
-// ============================================================
-// FILE: src/pages/Ghost.jsx
-// ============================================================
-// Ghost session — looks identical to /dashboard.
-// The /ghost URL loads an identical-looking inbox.
-// No visual difference whatsoever to the attacker.
-import Dashboard from './Dashboard.jsx'
+// Ghost session — loaded silently when duress is detected.
+// Looks IDENTICAL to Dashboard. Attacker sees a normal session.
+// Real account is locked on-chain.
+
+import Dashboard from './Dashboard';
+import { useEffect } from 'react';
 
 export default function Ghost() {
-  return <Dashboard isGhost={true} />
+  useEffect(() => {
+    // Ghost loaded — don't let the URL change visibly
+    // The blockchain already recorded DuressActivated
+    console.log('[VAULTLESS] Ghost session loaded. Real account locked.');
+  }, []);
+
+  // Render the exact same dashboard — indistinguishable
+  return <Dashboard isGhost={true} />;
 }

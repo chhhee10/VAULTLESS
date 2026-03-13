@@ -1,420 +1,313 @@
-// ============================================================
-// FILE: src/pages/Auth.jsx
-// ============================================================
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion'
-import { AreaChart, Area, ResponsiveContainer } from 'recharts'
-import toast from 'react-hot-toast'
-import PageShell from '../components/PageShell.jsx'
-import DataStream from '../components/DataStream.jsx'
-import { useVaultless } from '../lib/VaultlessContext.jsx'
-import {
-  useKeystrokeDNA, useMouseDNA,
-  combinedVector, cosineSimilarity, stressDetector,
-  vectorToHash, generateNullifier,
-} from '../hooks/behaviouralEngine.js'
-import {
-  connectWallet, authenticateIdentity, triggerDuressOnChain,
-  recordAuthFailed, getEtherscanLink,
-} from '../lib/ethereum.js'
-import { sendDuressAlert } from '../lib/duressAlert.js'
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, detectStress, classifyScore } from '../hooks/behaviouralEngine';
+import { useVaultless } from '../lib/VaultlessContext';
+import { getContract, getSigner, generateNullifier } from '../lib/ethereum';
+import { sendDuressAlert } from '../lib/duressAlert';
 
-const PHRASE = 'Secure my account'
-const THRESHOLDS = { AUTH: 0.85, DURESS_LOW: 0.55 }
-
-// ── Score ring SVG ────────────────────────────────────────────
-function ScoreRing({ score, status }) {
-  const radius = 120, cx = 140, cy = 140
-  const circumference = 2 * Math.PI * radius
-  const dash = circumference * Math.max(0, Math.min(1, score))
-  const color = status === 'authenticated' ? '#00ff88' : status === 'duress' ? '#ff6b35' : status === 'rejected' ? '#ff2d55' : '#4a4a5a'
-  const glow = status === 'authenticated' ? '0 0 20px #00ff88' : status === 'duress' ? '0 0 20px #ff6b35' : status === 'rejected' ? '0 0 20px #ff2d55' : 'none'
-
-  const springScore = useSpring(0, { stiffness: 80, damping: 18 })
-  const displayScore = useTransform(springScore, v => (v * 100).toFixed(1))
-  useEffect(() => { springScore.set(score) }, [score])
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
-      <svg width="280" height="280" style={{ position: 'absolute' }}>
-        {/* Track */}
-        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-        {/* Animated fill */}
-        <motion.circle
-          cx={cx} cy={cy} r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          animate={{ strokeDashoffset: circumference - dash, filter: `drop-shadow(${glow})` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          style={{ transformOrigin: `${cx}px ${cy}px`, transform: 'rotate(-90deg)' }}
-        />
-      </svg>
-      <div className="relative z-10 text-center">
-        <motion.div
-          className="font-['JetBrains_Mono'] font-bold"
-          style={{ fontSize: '64px', color, lineHeight: 1, filter: `drop-shadow(${glow})` }}
-        >
-          <motion.span>{displayScore}</motion.span>
-        </motion.div>
-        <div className="font-['JetBrains_Mono'] text-xs tracking-widest mt-1" style={{ color: '#4a4a5a' }}>% MATCH</div>
-      </div>
-    </div>
-  )
-}
-
-// ── Confetti ──────────────────────────────────────────────────
-function Confetti() {
-  return (
-    <div className="fixed inset-0 pointer-events-none z-40">
-      {Array.from({ length: 25 }).map((_, i) => (
-        <div
-          key={i}
-          className="confetti absolute w-2 h-2 rounded-sm"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 40}%`,
-            background: Math.random() > 0.5 ? '#00ff88' : '#00d4ff',
-            animationDelay: `${Math.random() * 0.5}s`,
-            opacity: 0.8,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
+const PHRASE = 'Secure my account';
 
 export default function Auth() {
-  const navigate = useNavigate()
-  const { enrollmentVector, enrollmentRhythmVariance, setAuthResult, addTxEvent, walletAddress } = useVaultless()
+  const navigate = useNavigate();
+  const { enrollmentVector, enrollmentKeystroke, walletAddress, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode } = useVaultless();
 
-  const [phase, setPhase] = useState('idle') // idle | capturing | authenticated | duress | rejected
-  const [score, setScore] = useState(0)
-  const [inputVal, setInputVal] = useState('')
-  const [liveVariance, setLiveVariance] = useState(0)
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [bgFlash, setBgFlash] = useState(null)
+  const [phase, setPhase] = useState('ready'); // ready | typing | scoring | result
+  const [currentInput, setCurrentInput] = useState('');
+  const [score, setScore] = useState(null);
+  const [result, setResult] = useState(null); // authenticated | duress | rejected
+  const [graphData, setGraphData] = useState([]);
+  const [statusMsg, setStatusMsg] = useState('');
+  const [stressScore, setStressScore] = useState(0);
+  const inputRef = useRef(null);
 
-  const keystroke = useKeystrokeDNA()
-  const mouse = useMouseDNA()
-  const inputRef = useRef(null)
+  const keystroke = useKeystrokeDNA();
+  const mouse = useMouseDNA();
 
-  const flashBg = (color) => {
-    setBgFlash(color)
-    setTimeout(() => setBgFlash(null), 400)
-  }
+  useEffect(() => {
+    if (phase === 'typing') {
+      inputRef.current?.focus();
+      mouse.startCapture();
+    }
+  }, [phase]);
 
-  const handleStartCapture = useCallback(() => {
-    setInputVal('')
-    setPhase('capturing')
-    keystroke.startCapture()
-    mouse.startCapture()
-    setTimeout(() => inputRef.current?.focus(), 50)
-  }, [])
+  useEffect(() => {
+    if (keystroke.events.length > 0) {
+      const data = keystroke.events.slice(-30).map((e, i) => ({
+        i,
+        hold: Math.min(e.holdTime, 500),
+        flight: Math.min(e.flightTime, 800),
+      }));
+      setGraphData(data);
+    }
+  }, [keystroke.events]);
 
-  const handleInput = useCallback(async (e) => {
-    const val = e.target.value
-    setInputVal(val)
+  const handleKeyUp = (e) => {
+    keystroke.onKeyUp(e);
+    if (e.key === 'Enter' && currentInput.trim() === PHRASE) {
+      processAuth();
+    }
+  };
 
-    // Update live variance display
-    if (keystroke.graphData.length > 2) {
-      const recent = keystroke.graphData.slice(-5).map(d => d.v)
-      const mean = recent.reduce((a, b) => a + b, 0) / recent.length
-      const variance = recent.reduce((sum, v) => sum + (v - mean) ** 2, 0) / recent.length
-      setLiveVariance(Math.round(variance))
+  const processAuth = async () => {
+    setPhase('scoring');
+
+    const kData = keystroke.extractVector();
+    const mData = mouse.extractVector();
+
+    if (!kData || !enrollmentVector) {
+      setStatusMsg('No enrollment found. Please enroll first.');
+      return;
     }
 
-    if (val !== PHRASE) return
+    const liveVector = buildCombinedVector(kData, mData);
 
-    // Run analysis
-    const ksData = keystroke.stopCapture()
-    const mData = mouse.stopCapture()
-    const liveVec = combinedVector(ksData, mData)
-
-    let similarity = 0.3 + Math.random() * 0.2 // demo fallback
-
-    if (enrollmentVector && enrollmentVector.length === 64) {
-      similarity = cosineSimilarity(liveVec, enrollmentVector)
-    }
-
-    setScore(similarity)
-
-    const stressed = stressDetector(ksData.rhythmVariance, enrollmentRhythmVariance)
-    console.log('[VAULTLESS] Score:', similarity.toFixed(4), 'Stressed:', stressed)
-
-    if (similarity > THRESHOLDS.AUTH && !stressed) {
-      // AUTHENTICATED
-      setPhase('authenticated')
-      setAuthResult({ score: similarity, duress: false, authenticated: true })
-      flashBg('rgba(0,255,136,0.05)')
-      setShowConfetti(true)
-      setTimeout(() => setShowConfetti(false), 2000)
-
-      try {
-        const nullifier = generateNullifier(liveVec, Date.now())
-        const tx = await authenticateIdentity(nullifier)
-        const receipt = await tx.wait()
-        addTxEvent({ event: 'AuthSuccess', txHash: receipt.transactionHash || tx.hash })
-      } catch (err) {
-        console.warn('[VAULTLESS] On-chain auth failed (demo ok):', err.message)
-      }
-
-      setTimeout(() => navigate('/dashboard'), 2000)
-
-    } else if (similarity >= THRESHOLDS.DURESS_LOW || stressed) {
-      // DURESS
-      setPhase('duress')
-      setAuthResult({ score: similarity, duress: true, authenticated: false })
-      flashBg('rgba(255,107,53,0.05)')
-      toast.error('Stress signature detected', { icon: '⚠️' })
-
-      try {
-        const tx = await triggerDuressOnChain()
-        const receipt = await tx.wait()
-        const txHash = receipt.transactionHash || tx.hash
-        addTxEvent({ event: 'DuressActivated', txHash })
-        await sendDuressAlert({
-          walletAddress: walletAddress || 'demo',
-          timestamp: Date.now(),
-          etherscanLink: getEtherscanLink(txHash),
-        })
-      } catch (err) {
-        console.warn('[VAULTLESS] Duress chain call (demo ok):', err.message)
-      }
-
-      setTimeout(() => navigate('/ghost'), 2500)
-
+    // Demo mode: randomize score based on which "scenario" the user picks
+    let simScore;
+    if (demoMode) {
+      // Simulate by adding random noise
+      simScore = 0.89 + (Math.random() * 0.08 - 0.04); // normal: ~0.87-0.97
     } else {
-      // REJECTED
-      setPhase('rejected')
-      setAuthResult({ score: similarity, duress: false, authenticated: false })
-      flashBg('rgba(255,45,85,0.05)')
-      toast.error('Access denied')
-
-      try {
-        const tx = await recordAuthFailed()
-        const receipt = await tx.wait()
-        addTxEvent({ event: 'AuthFailed', txHash: receipt.transactionHash || tx.hash })
-      } catch (err) {
-        console.warn('[VAULTLESS] AuthFailed chain call (demo ok):', err.message)
-      }
+      simScore = cosineSimilarity(liveVector, enrollmentVector);
     }
-  }, [enrollmentVector, enrollmentRhythmVariance, keystroke, mouse, navigate, setAuthResult, addTxEvent, walletAddress])
 
-  const status = phase === 'authenticated' ? 'authenticated' : phase === 'duress' ? 'duress' : phase === 'rejected' ? 'rejected' : 'idle'
-  const statusColor = { authenticated: '#00ff88', duress: '#ff6b35', rejected: '#ff2d55', idle: '#4a4a5a' }[status]
+    const isStress = demoMode ? false : detectStress(kData, enrollmentKeystroke);
+    const classification = demoMode ? (simScore > 0.85 ? 'authenticated' : 'duress') : classifyScore(simScore, isStress);
 
-  const statusLabel = {
-    authenticated: 'IDENTITY CONFIRMED',
-    duress: 'STRESS SIGNATURE DETECTED',
-    rejected: 'ACCESS DENIED',
-    idle: 'AWAITING INPUT',
-    capturing: 'SCANNING...',
-  }[phase] || 'AWAITING INPUT'
+    // Stress indicator (0–100)
+    const stressVal = isStress ? 85 + Math.random() * 15 : Math.max(0, (0.85 - simScore) * 200);
+    setStressScore(Math.min(100, stressVal));
+
+    // Animate score counting up
+    let display = 0;
+    const target = simScore;
+    const interval = setInterval(() => {
+      display += 0.02;
+      if (display >= target) { display = target; clearInterval(interval); }
+      setScore(display);
+    }, 30);
+
+    setTimeout(() => {
+      setResult(classification);
+      setLastAuthScore(simScore);
+      setPhase('result');
+      handleResult(classification, simScore, liveVector);
+    }, 1800);
+  };
+
+  const handleResult = async (classification, simScore, liveVector) => {
+    if (classification === 'authenticated') {
+      setStatusMsg('Generating nullifier and verifying on-chain...');
+      try {
+        if (demoMode) {
+          await new Promise(r => setTimeout(r, 1200));
+          const fakeTx = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+          addEtherscanLink('AuthSuccess', fakeTx);
+          setStatusMsg('Authenticated. Redirecting...');
+          setTimeout(() => navigate('/dashboard'), 2000);
+          return;
+        }
+        const signer = await getSigner();
+        const addr = await signer.getAddress();
+        const nullifier = generateNullifier(liveVector, addr);
+        const contract = await getContract(signer);
+        const tx = await contract.authenticate(nullifier);
+        const receipt = await tx.wait();
+        addEtherscanLink('AuthSuccess', receipt.hash);
+        setStatusMsg('Identity verified on-chain. Redirecting...');
+        setTimeout(() => navigate('/dashboard'), 2000);
+      } catch (e) {
+        setStatusMsg('Chain error: ' + e.message);
+      }
+    } else if (classification === 'duress') {
+      setIsDuressMode(true);
+      setStatusMsg('Activating duress protocol silently...');
+      try {
+        if (demoMode) {
+          await new Promise(r => setTimeout(r, 800));
+          const fakeTx = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+          addEtherscanLink('DuressActivated', fakeTx);
+          await sendDuressAlert({ address: walletAddress || 'DEMO', txHash: fakeTx, timestamp: Date.now() });
+          setTimeout(() => navigate('/ghost'), 1500);
+          return;
+        }
+        const signer = await getSigner();
+        const contract = await getContract(signer);
+        const tx = await contract.triggerDuress();
+        const receipt = await tx.wait();
+        addEtherscanLink('DuressActivated', receipt.hash);
+        await sendDuressAlert({ address: walletAddress, txHash: receipt.hash, timestamp: Date.now() });
+        setTimeout(() => navigate('/ghost'), 1500);
+      } catch (e) {
+        console.error('Duress chain error:', e);
+        setTimeout(() => navigate('/ghost'), 1500);
+      }
+    } else {
+      // Rejected
+      setStatusMsg('Authentication failed. AuthFailed logged on-chain.');
+      try {
+        if (demoMode) {
+          const fakeTx = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+          addEtherscanLink('AuthFailed', fakeTx);
+          return;
+        }
+        const signer = await getSigner();
+        const contract = await getContract(signer);
+        await contract.authFailed();
+      } catch (e) { /* log silently */ }
+    }
+  };
+
+  const scoreColor = score === null ? '#fff'
+    : score > 0.85 ? '#00ff88'
+    : score >= 0.55 ? '#ffaa00'
+    : '#ff4444';
+
+  const resultMessages = {
+    authenticated: { icon: '✓', label: 'IDENTITY VERIFIED', color: '#00ff88' },
+    duress: { icon: '⚠', label: 'DURESS DETECTED', color: '#ffaa00' },
+    rejected: { icon: '✗', label: 'IDENTITY REJECTED', color: '#ff4444' },
+  };
 
   return (
-    <PageShell>
-      {/* Background flash */}
-      <AnimatePresence>
-        {bgFlash && (
-          <motion.div
-            key="flash"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 pointer-events-none z-10"
-            style={{ background: bgFlash }}
-          />
-        )}
-      </AnimatePresence>
+    <div style={styles.root}>
+      <div style={styles.header}>
+        <button style={styles.back} onClick={() => navigate('/')}>← VAULTLESS</button>
+        <div style={styles.step}>AUTHENTICATION</div>
+      </div>
 
-      {showConfetti && <Confetti />}
+      <div style={styles.container}>
+        <div style={styles.card}>
+          {phase === 'ready' && (
+            <>
+              <h2 style={styles.title}>Authenticate</h2>
+              {!isEnrolled && !demoMode && (
+                <div style={styles.warning}>⚠ No enrollment found. <button style={styles.inlineLink} onClick={() => navigate('/enroll')}>Enroll first →</button></div>
+              )}
+              <p style={styles.desc}>Type the same phrase you enrolled with.</p>
+              <div style={styles.phrase}>"{PHRASE}"</div>
+              <button style={styles.cta} onClick={() => setPhase('typing')}>Begin Authentication</button>
+            </>
+          )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -16 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="min-h-screen flex flex-col items-center justify-between py-8 px-4"
-        onMouseMove={mouse.onMouseMove}
-        onMouseDown={mouse.onMouseDown}
-        onMouseUp={mouse.onMouseUp}
-      >
-        {/* ── ZONE 1: SCORE RING ───────────────────────────── */}
-        <div className="flex flex-col items-center pt-8 pb-4">
-          <p className="font-['JetBrains_Mono'] text-xs uppercase tracking-[0.2em] text-[#00ff88] mb-6 opacity-70">
-            // IDENTITY VERIFICATION
-          </p>
+          {phase === 'typing' && (
+            <>
+              <h2 style={styles.title}>Type the phrase</h2>
+              <div style={styles.phrase}>"{PHRASE}"</div>
+              <p style={styles.hint}>Press Enter when done</p>
 
-          <motion.div
-            animate={phase === 'rejected' || phase === 'duress' ? {
-              x: [-10, 10, -8, 8, -4, 4, 0],
-              transition: { duration: 0.4 }
-            } : {}}
-          >
-            <ScoreRing score={score} status={status} />
-          </motion.div>
+              <input
+                ref={inputRef}
+                style={styles.typeInput}
+                value={currentInput}
+                onChange={e => setCurrentInput(e.target.value)}
+                onKeyDown={keystroke.onKeyDown}
+                onKeyUp={handleKeyUp}
+                onMouseMove={mouse.onMouseMove}
+                onMouseDown={mouse.onMouseDown}
+                onMouseUp={mouse.onMouseUp}
+                placeholder="Start typing..."
+                autoComplete="off"
+                spellCheck={false}
+              />
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={phase}
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.3 }}
-              className="mt-4 font-['Space_Grotesk'] font-bold text-xl"
-              style={{ color: statusColor }}
-            >
-              {statusLabel}
-              {phase === 'idle' && <span className="cursor-blink ml-1">_</span>}
-            </motion.div>
-          </AnimatePresence>
+              {graphData.length > 2 && (
+                <div style={styles.graphContainer}>
+                  <div style={styles.graphLabel}>DNA PATTERN FORMING</div>
+                  <ResponsiveContainer width="100%" height={100}>
+                    <LineChart data={graphData}>
+                      <Line type="monotone" dataKey="hold" stroke="#00ff88" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="flight" stroke="#0088ff" strokeWidth={1} dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
 
-          {phase === 'duress' && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-[#6a6a7a] text-sm mt-2 font-['Inter']"
-            >
-              Loading secure environment...
-            </motion.p>
+              {currentInput.trim() === PHRASE && (
+                <button style={styles.cta} onClick={processAuth}>Verify Identity →</button>
+              )}
+            </>
+          )}
+
+          {(phase === 'scoring' || phase === 'result') && (
+            <>
+              <div style={styles.scoreDisplay}>
+                <div style={{ ...styles.scoreNum, color: scoreColor }}>
+                  {score !== null ? (score * 100).toFixed(1) + '%' : '—'}
+                </div>
+                <div style={styles.scoreLabel}>SIMILARITY SCORE</div>
+              </div>
+
+              {/* Score bar */}
+              <div style={styles.barContainer}>
+                <div style={{ ...styles.bar, width: `${(score || 0) * 100}%`, background: scoreColor, transition: 'width 0.05s ease' }} />
+                <div style={{ ...styles.barMarker, left: '55%' }} title="Duress threshold" />
+                <div style={{ ...styles.barMarker, left: '85%', borderColor: '#00ff88' }} title="Auth threshold" />
+              </div>
+              <div style={styles.barLabels}>
+                <span style={{ color: '#ff4444' }}>REJECTED</span>
+                <span style={{ color: '#ffaa00' }}>DURESS</span>
+                <span style={{ color: '#00ff88' }}>AUTH</span>
+              </div>
+
+              {stressScore > 0 && (
+                <div style={styles.stressBar}>
+                  <span style={styles.stressLabel}>STRESS LEVEL</span>
+                  <div style={styles.stressTrack}>
+                    <div style={{ ...styles.stressFill, width: `${stressScore}%`, background: stressScore > 60 ? '#ffaa00' : '#333' }} />
+                  </div>
+                  <span style={{ color: stressScore > 60 ? '#ffaa00' : '#555', fontSize: 11 }}>{stressScore.toFixed(0)}%</span>
+                </div>
+              )}
+
+              {result && (
+                <div style={{ color: resultMessages[result].color, fontSize: 20, marginTop: 24, letterSpacing: 3 }}>
+                  {resultMessages[result].icon} {resultMessages[result].label}
+                </div>
+              )}
+
+              {statusMsg && <div style={styles.status}>{statusMsg}</div>}
+
+              {result === 'rejected' && (
+                <button style={{ ...styles.cta, marginTop: 24 }} onClick={() => { setPhase('ready'); setCurrentInput(''); keystroke.reset(); mouse.reset(); setScore(null); setResult(null); }}>
+                  Try Again
+                </button>
+              )}
+            </>
           )}
         </div>
-
-        {/* ── ZONE 2: INPUT ─────────────────────────────────── */}
-        <div className="w-full max-w-lg">
-          {/* Phrase card */}
-          <div
-            className="relative rounded-xl overflow-hidden p-5 mb-4"
-            style={{
-              background: 'rgba(0,0,0,0.6)',
-              border: '1px solid rgba(0,255,136,0.15)',
-            }}
-          >
-            <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,255,136,0.4), transparent)' }} />
-            <p className="font-['JetBrains_Mono'] text-xs uppercase tracking-[0.2em] text-[#00ff88] mb-2 opacity-70">// TYPE THIS PHRASE</p>
-            <p className="font-['JetBrains_Mono'] text-xl text-[#00ff88]" style={{ letterSpacing: '0.05em' }}>{PHRASE}</p>
-          </div>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputVal}
-            onChange={handleInput}
-            onKeyDown={keystroke.onKeyDown}
-            onKeyUp={keystroke.onKeyUp}
-            placeholder={phase === 'capturing' ? 'Start typing...' : 'Click Verify Identity to begin'}
-            disabled={phase !== 'capturing'}
-            className="w-full mb-4 font-['JetBrains_Mono'] text-sm transition-all focus:outline-none"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: `1px solid ${phase === 'capturing' ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: '8px',
-              color: '#e8e8f0',
-              padding: '14px 16px',
-              letterSpacing: '0.08em',
-            }}
-          />
-
-          {/* Stress indicator */}
-          <div className="mb-4">
-            <p className="font-['JetBrains_Mono'] text-xs uppercase tracking-[0.2em] text-[#ff6b35] mb-2 opacity-70">// STRESS INDICATOR</p>
-            <div className="relative w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <motion.div
-                className="h-full rounded-full"
-                animate={{ width: `${Math.min(100, (liveVariance / 5000) * 100)}%` }}
-                style={{ background: liveVariance > 2000 ? '#ff6b35' : '#4a4a5a' }}
-                transition={{ duration: 0.2 }}
-              />
-            </div>
-            <div className="flex justify-end mt-1">
-              <span className="font-['JetBrains_Mono'] text-xs" style={{ color: liveVariance > 2000 ? '#ff6b35' : '#4a4a5a' }}>
-                σ² {liveVariance}
-              </span>
-            </div>
-          </div>
-
-          {/* Verify button or status */}
-          {phase === 'idle' || phase === 'rejected' ? (
-            <motion.button
-              whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(0,255,136,0.4)' }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleStartCapture}
-              style={{
-                background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
-                color: '#000',
-                fontFamily: 'Space Grotesk',
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                borderRadius: '10px',
-                padding: '14px 32px',
-                fontSize: '15px',
-                boxShadow: '0 0 20px rgba(0,255,136,0.25)',
-                border: 'none',
-                cursor: 'pointer',
-                width: '100%',
-              }}
-            >
-              {phase === 'rejected' ? 'Try Again' : 'Verify Identity'}
-            </motion.button>
-          ) : null}
-        </div>
-
-        {/* ── ZONE 3: LIVE SIGNALS ─────────────────────────── */}
-        <div className="w-full max-w-lg">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* Live EKG */}
-            <div
-              className="relative rounded-xl overflow-hidden p-4"
-              style={{
-                background: 'rgba(13,13,15,0.9)',
-                border: '1px solid rgba(0,255,136,0.1)',
-              }}
-            >
-              <p className="font-['JetBrains_Mono'] text-xs text-[#00ff88] mb-2 opacity-60">Live Signal</p>
-              <ResponsiveContainer width="100%" height={70}>
-                <AreaChart data={keystroke.graphData.length > 0 ? keystroke.graphData : [{ v: 0 }]} animationDuration={300}>
-                  <defs>
-                    <linearGradient id="liveGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00ff88" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#00ff88" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="v" stroke="#00ff88" strokeWidth={1.5} fill="url(#liveGrad)" dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Mouse dynamics */}
-            <div
-              className="relative rounded-xl overflow-hidden p-4"
-              style={{
-                background: 'rgba(13,13,15,0.9)',
-                border: '1px solid rgba(0,212,255,0.1)',
-              }}
-            >
-              <p className="font-['JetBrains_Mono'] text-xs text-[#00d4ff] mb-2 opacity-60">Mouse Dynamics</p>
-              <ResponsiveContainer width="100%" height={70}>
-                <AreaChart data={mouse.mouseGraphData.length > 0 ? mouse.mouseGraphData : [{ v: 0 }]} animationDuration={300}>
-                  <defs>
-                    <linearGradient id="mouseAuthGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="v" stroke="#00d4ff" strokeWidth={1.5} fill="url(#mouseAuthGrad)" dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <DataStream active={phase === 'capturing'} />
-        </div>
-      </motion.div>
-    </PageShell>
-  )
+      </div>
+    </div>
+  );
 }
+
+const styles = {
+  root: { minHeight: '100vh', background: '#080808', color: '#fff', fontFamily: "'Courier New', monospace" },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 32px', borderBottom: '1px solid #111' },
+  back: { background: 'none', border: 'none', color: '#00ff88', cursor: 'pointer', fontSize: 13, letterSpacing: 1 },
+  step: { color: '#444', fontSize: 11, letterSpacing: 3 },
+  container: { display: 'flex', justifyContent: 'center', padding: '60px 24px' },
+  card: { width: '100%', maxWidth: 560, background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12, padding: '48px 40px', textAlign: 'center' },
+  title: { fontSize: 28, fontWeight: 300, margin: '0 0 16px', fontFamily: 'Georgia, serif' },
+  desc: { color: '#666', lineHeight: 1.8, marginBottom: 24 },
+  phrase: { fontSize: 20, color: '#00ff88', margin: '24px 0', letterSpacing: 1 },
+  hint: { color: '#444', fontSize: 12, marginBottom: 24 },
+  cta: { background: '#00ff88', color: '#000', border: 'none', padding: '14px 32px', fontSize: 13, fontWeight: 700, letterSpacing: 2, cursor: 'pointer', borderRadius: 4, fontFamily: "'Courier New', monospace" },
+  typeInput: { width: '100%', padding: '16px', background: '#111', border: '1px solid #00ff8844', borderRadius: 6, color: '#00ff88', fontSize: 18, textAlign: 'center', outline: 'none', boxSizing: 'border-box', letterSpacing: 2, fontFamily: "'Courier New', monospace", marginBottom: 24 },
+  graphContainer: { background: '#060606', border: '1px solid #111', borderRadius: 8, padding: '16px', marginBottom: 24 },
+  graphLabel: { color: '#333', fontSize: 10, letterSpacing: 3, marginBottom: 8 },
+  scoreDisplay: { marginBottom: 32 },
+  scoreNum: { fontSize: 72, fontWeight: 700, lineHeight: 1, transition: 'color 0.3s' },
+  scoreLabel: { color: '#333', fontSize: 11, letterSpacing: 3, marginTop: 8 },
+  barContainer: { position: 'relative', height: 8, background: '#111', borderRadius: 4, marginBottom: 8, overflow: 'visible' },
+  bar: { height: '100%', borderRadius: 4, transition: 'background 0.3s' },
+  barMarker: { position: 'absolute', top: -4, width: 2, height: 16, background: '#333', border: '1px solid #555' },
+  barLabels: { display: 'flex', justifyContent: 'space-between', fontSize: 10, letterSpacing: 2, marginBottom: 24 },
+  stressBar: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 },
+  stressLabel: { color: '#333', fontSize: 10, letterSpacing: 2, whiteSpace: 'nowrap' },
+  stressTrack: { flex: 1, height: 4, background: '#111', borderRadius: 2 },
+  stressFill: { height: '100%', borderRadius: 2, transition: 'width 0.3s, background 0.3s' },
+  status: { color: '#666', fontSize: 13, marginTop: 16 },
+  warning: { background: '#ff444411', border: '1px solid #ff444433', borderRadius: 6, padding: '12px 16px', color: '#ff8888', fontSize: 13, marginBottom: 24 },
+  inlineLink: { background: 'none', border: 'none', color: '#ff8888', textDecoration: 'underline', cursor: 'pointer', fontSize: 13 },
+};
