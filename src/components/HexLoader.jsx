@@ -1,66 +1,71 @@
-import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function HexLoader({ onFinish }) {
+  const svgRef = useRef(null);
+  const overlayRef = useRef(null);
+  const hasFinished = useRef(false);
 
   useEffect(() => {
+    const svg = svgRef.current;
+    const overlay = overlayRef.current;
+    if (!svg || !overlay) return;
+
+    hasFinished.current = false;
+
+    requestAnimationFrame(() => {
+      svg.style.transform = "scale(40)";
+      svg.style.opacity = "0";
+      overlay.style.opacity = "0";
+    });
 
     const timer = setTimeout(() => {
-      onFinish();
+      if (!hasFinished.current) {
+        hasFinished.current = true;
+        onFinish();
+      }
     }, 750);
 
     return () => clearTimeout(timer);
-
   }, [onFinish]);
 
   return (
-    <div style={styles.container}>
-
-      <motion.svg
-        width="140"
-        height="140"
+    <div ref={overlayRef} style={styles.overlay}>
+      <svg
+        ref={svgRef}
+        width="80"
+        height="80"
         viewBox="0 0 100 100"
-
-        initial={{ scale: 0.1 }}
-        animate={{ scale: 30 }}
-        transition={{ duration: 0.75, ease: "easeInOut" }}
+        style={styles.hex}
       >
-
-        <motion.polygon
-          points="50,3 95,25 95,75 50,97 5,75 5,25"
-          fill="transparent"
-          stroke="#00cc66"
-
-          initial={{
-            strokeWidth: 6,
-            strokeOpacity: 1
-          }}
-
-          animate={{
-            strokeWidth: 0,
-            strokeOpacity: 0
-          }}
-
-          transition={{
-            duration: 0.75,
-            ease: "easeInOut"
-          }}
+        <polygon
+          points="50,4 93,27 93,73 50,96 7,73 7,27"
+          fill="none"
+          stroke="#00ff88"
+          strokeWidth="6"
+          strokeLinejoin="round"
         />
-
-      </motion.svg>
-
+      </svg>
     </div>
   );
 }
 
 const styles = {
-  container: {
+  overlay: {
     position: "fixed",
     inset: 0,
-    background: "transparent",
+    background: "#0a0a0c",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 9999
-  }
+    zIndex: 9999,
+    opacity: 1,
+    transition: "opacity 0.75s ease",
+    pointerEvents: "none",
+  },
+  hex: {
+    transform: "scale(1)",
+    opacity: 1,
+    transition: "transform 0.75s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.75s ease",
+    willChange: "transform, opacity",
+  },
 };
