@@ -17,9 +17,69 @@ export const CONTRACT_ABI = [
   "event DuressActivated(address indexed user, uint256 timestamp)",
 ];
 
-export async function getProvider() {
-  if (!window.ethereum) throw new Error('MetaMask not found');
-  const provider = new ethers.BrowserProvider(window.ethereum);
+function getInjectedEthereum() {
+  if (typeof window === 'undefined') return null;
+
+  const { ethereum } = window;
+  if (!ethereum) return null;
+
+  if (Array.isArray(ethereum.providers) && ethereum.providers.length > 0) {
+    return ethereum.providers.find((provider) => provider?.isMetaMask) || ethereum.providers[0];
+  }
+
+  return ethereum;
+}
+
+export function isMobileBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+export function canOpenMetaMaskDeepLink() {
+  if (typeof window === 'undefined') return false;
+
+  const { protocol, hostname } = window.location;
+  if (protocol !== 'https:') return false;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+
+  return true;
+}
+
+export function getMetaMaskDeepLink() {
+  if (typeof window === 'undefined') return null;
+
+  const currentUrl = window.location.href.replace(/^https?:\/\//, '');
+  return `https://metamask.app.link/dapp/${currentUrl}`;
+}
+
+export function openMetaMaskDeepLink() {
+  const deepLink = getMetaMaskDeepLink();
+
+  if (!deepLink || !canOpenMetaMaskDeepLink()) {
+    throw new Error('MetaMask mobile can only open this app from a deployed HTTPS URL.');
+  }
+
+  window.location.href = deepLink;
+}
+
+export async function getProvider(options = {}) {
+  const { autoRedirectMobile = true } = options;
+  const injectedEthereum = getInjectedEthereum();
+
+  if (!injectedEthereum) {
+    if (autoRedirectMobile && isMobileBrowser() && canOpenMetaMaskDeepLink()) {
+      openMetaMaskDeepLink();
+      throw new Error('Opening MetaMask. If nothing happens, open this site from the MetaMask in-app browser.');
+    }
+
+    if (isMobileBrowser()) {
+      throw new Error('MetaMask was not detected. Open this site inside the MetaMask in-app browser.');
+    }
+
+    throw new Error('MetaMask not found');
+  }
+
+  const provider = new ethers.BrowserProvider(injectedEthereum);
   await provider.send('eth_requestAccounts', []);
   return provider;
 }

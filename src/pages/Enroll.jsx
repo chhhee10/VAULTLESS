@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector } from '../hooks/behaviouralEngine';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getContract, getSigner, vectorToHash, CONTRACT_ADDRESS, DEMO_MODE } from '../lib/ethereum';
-import { ethers } from 'ethers';
+import { getContract, getSigner, vectorToHash, isMobileBrowser, canOpenMetaMaskDeepLink } from '../lib/ethereum';
 
 const PHRASE = 'Secure my account';
 const REQUIRED_SAMPLES = 3;
@@ -151,7 +150,12 @@ export default function Enroll() {
       setWalletAddress(addr);
       setPhase('capturing');
     } catch (e) {
-      setStatusMsg('MetaMask connection failed: ' + e.message);
+      if (isMobileBrowser() && !canOpenMetaMaskDeepLink()) {
+        setStatusMsg('MetaMask mobile needs a deployed HTTPS URL. If you are testing on iPad, open the live site inside the MetaMask browser.');
+        return;
+      }
+
+      setStatusMsg(e.message || 'MetaMask connection failed.');
     }
   };
 
@@ -413,6 +417,11 @@ export default function Enroll() {
             <button style={styles.cta} onClick={connectWallet}>
               {demoMode ? 'Start Enrollment (Demo)' : 'Connect MetaMask & Begin'}
             </button>
+            {!demoMode && isMobileBrowser() && (
+              <div style={styles.mobileHint}>
+                On iPad or iPhone, this will open the MetaMask in-app browser if Safari cannot inject the wallet.
+              </div>
+            )}
             {statusMsg && <div style={styles.status}>{statusMsg}</div>}
           </div>
         )}
@@ -633,6 +642,7 @@ const styles = {
   sensorEnableBtn: { background: '#00ff88', color: '#000', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: "'Courier New', monospace" },
   sensorWarning: { marginBottom: 16, background: '#2a120f', border: '1px solid #5c2a23', borderRadius: 6, padding: '10px 12px', color: '#ffb09f', fontSize: 12, textAlign: 'left', lineHeight: 1.4 },
   recoveryInput: { width: '100%', padding: '12px 14px', marginBottom: 16, background: '#101010', border: '1px solid #2a2a2a', borderRadius: 6, color: '#d8ffe9', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: "'Courier New', monospace" },
+  mobileHint: { color: '#7d8f84', fontSize: 12, lineHeight: 1.6, marginTop: 14 },
   typeInput: { width: '100%', padding: '16px', background: '#111', border: '1px solid #00ff8844', borderRadius: 6, color: '#00ff88', fontSize: 18, textAlign: 'center', outline: 'none', boxSizing: 'border-box', letterSpacing: 2, fontFamily: "'Courier New', monospace" },
   graphContainer: { marginTop: 32, background: '#060606', border: '1px solid #111', borderRadius: 8, padding: '16px' },
   graphLabel: { color: '#333', fontSize: 10, letterSpacing: 3, marginBottom: 8 },
