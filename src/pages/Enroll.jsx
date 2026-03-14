@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine } fro
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector } from '../hooks/behaviouralEngine';
 import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getContract, getSigner, vectorToHash, isMobileBrowser, canOpenMetaMaskDeepLink } from '../lib/ethereum';
+import { getContract, getSigner, getActiveWalletAddress, vectorToHash, isMobileBrowser, canOpenMetaMaskDeepLink } from '../lib/ethereum';
 
 const PHRASE = 'Secure my account';
 const REQUIRED_SAMPLES = 3;
@@ -57,6 +57,7 @@ export default function Enroll() {
   }, [phase, sampleCount, mouse.startCapture]);
 
   useEffect(() => {
+    if (!isMobile) return;
     if (phase !== 'capturing') return;
     const onTouchStartWindow = (e) => mouse.onTouchStart(e);
     const onTouchMoveWindow = (e) => mouse.onTouchMove(e);
@@ -69,19 +70,24 @@ export default function Enroll() {
       window.removeEventListener('touchmove', onTouchMoveWindow);
       window.removeEventListener('touchend', onTouchEndWindow);
     };
-  }, [phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
+  }, [isMobile, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
 
   useEffect(() => {
+    if (!isMobile) {
+      setMotionAvailable(false);
+      return;
+    }
     setMotionAvailable(mouse.motionSupported);
-  }, [mouse.motionSupported]);
+  }, [isMobile, mouse.motionSupported]);
 
   useEffect(() => {
+    if (!isMobile) return;
     if (phase !== 'capturing') return;
     const interval = setInterval(() => {
       setSensorDiag({ ...mouse.getDiagnostics() });
     }, 250);
     return () => clearInterval(interval);
-  }, [phase, mouse.getDiagnostics]);
+  }, [isMobile, phase, mouse.getDiagnostics]);
 
   // Build live graph from keystroke events
   useEffect(() => {
@@ -146,8 +152,7 @@ export default function Enroll() {
         setPhase('capturing');
         return;
       }
-      const signer = await getSigner();
-      const addr = await signer.getAddress();
+      const addr = await getActiveWalletAddress();
       setWalletAddr(addr);
       setWalletAddress(addr);
       setPhase('capturing');
@@ -199,7 +204,7 @@ export default function Enroll() {
   const sensorActivityLive = (sensorDiag.motionEvents || 0) > 0 || (sensorDiag.orientationEvents || 0) > 0;
   const isMobilePlatform = sensorDiag.platform === 'ios' || sensorDiag.platform === 'android';
   const hasSensorApi = sensorDiag.hasDeviceMotion || sensorDiag.hasDeviceOrientation;
-  const showMobileSensorUi = isMobilePlatform && hasSensorApi;
+  const showMobileSensorUi = isMobile && isMobilePlatform && hasSensorApi;
   const sensorHealthText = !sensorDiag.isSecureContext
     ? 'Secure connection required'
     : sensorsEnabled

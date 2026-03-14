@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 // The phrase — must match exactly what's used in Enroll/Auth
 const PHRASE = 'Secure my account';
+const DEBUG_AUTH = import.meta.env.DEV && import.meta.env.VITE_AUTH_DEBUG === 'true';
 
 // ─── Keystroke DNA Hook ───────────────────────────────────────────────────────
 export function useKeystrokeDNA() {
@@ -109,6 +110,7 @@ export function useKeystrokeDNA() {
 export function useMouseDNA() {
   const [active, setActive] = useState(false);
   const [motionSupported, setMotionSupported] = useState(false);
+  const motionSupportedRef = useRef(false);
   const points = useRef([]);
   const lastPoint = useRef(null);
   const mouseDownTime = useRef(null);
@@ -242,6 +244,12 @@ export function useMouseDNA() {
     }
   }, []);
 
+  const updateMotionSupported = useCallback((supported) => {
+    if (motionSupportedRef.current === supported) return;
+    motionSupportedRef.current = supported;
+    setMotionSupported(supported);
+  }, []);
+
   const registerMotionListener = useCallback(() => {
     if (typeof window === 'undefined' || !window.DeviceMotionEvent || motionHandlerRef.current) return;
     diagnosticsRef.current.motionPermission = 'granted';
@@ -277,7 +285,7 @@ export function useMouseDNA() {
           t: now,
         });
         if (motionData.current.acc.length > 512) motionData.current.acc.shift();
-        setMotionSupported(true); // Mark as available when data is received
+        updateMotionSupported(true);
       }
       const rot = e.rotationRate;
       if (rot) {
@@ -303,13 +311,13 @@ export function useMouseDNA() {
           t: now,
         });
         if (motionData.current.gyro.length > 512) motionData.current.gyro.shift();
-        setMotionSupported(true); // Mark as available when data is received
+        updateMotionSupported(true);
       }
     };
 
     window.addEventListener('devicemotion', nextMotionHandler);
     motionHandlerRef.current = nextMotionHandler;
-  }, []);
+  }, [updateMotionSupported]);
 
   const registerOrientationListener = useCallback(() => {
     if (typeof window === 'undefined' || !window.DeviceOrientationEvent || orientationHandlerRef.current) return;
@@ -362,12 +370,12 @@ export function useMouseDNA() {
         t: now,
       });
       if (motionData.current.gyro.length > 512) motionData.current.gyro.shift();
-      setMotionSupported(true); // Mark as available when data is received
+      updateMotionSupported(true);
     };
 
     window.addEventListener('deviceorientation', nextOrientationHandler);
     orientationHandlerRef.current = nextOrientationHandler;
-  }, []);
+  }, [updateMotionSupported]);
 
   const startCapture = useCallback(() => {
     const platformInfo = detectPlatformInfo();
@@ -384,7 +392,7 @@ export function useMouseDNA() {
     prevOrientationSample.current = null;
     filteredGyro.current = null;
     filteredAcc.current = null;
-    setMotionSupported(false); // Reset until data is received
+    updateMotionSupported(false);
     diagnosticsRef.current = {
       platform: platformInfo.platform,
       browser: platformInfo.browser,
@@ -437,7 +445,7 @@ export function useMouseDNA() {
     }
 
     setActive(true);
-  }, [cleanupMotionListeners, detectPlatformInfo, registerMotionListener, registerOrientationListener]);
+  }, [cleanupMotionListeners, detectPlatformInfo, registerMotionListener, registerOrientationListener, updateMotionSupported]);
 
   const requestSensorAccess = useCallback(async () => {
     if (typeof window === 'undefined') return false;
@@ -514,8 +522,9 @@ export function useMouseDNA() {
 
     cleanupMotionListeners();
 
+    updateMotionSupported(false);
     setActive(false);
-  }, [cleanupMotionListeners]);
+  }, [cleanupMotionListeners, updateMotionSupported]);
 
   const extractVector = useCallback(() => {
     const pts = points.current;
@@ -761,20 +770,22 @@ export function cosineSimilarity(
     score *= mobileConfidence;
   }
 
-  console.log('[VAULTLESS AUTH DEBUG]');
-  console.log('  Hold pattern (Pearson):', holdPatternScore.toFixed(3), '→ normalized:', hpNorm.toFixed(3));
-  console.log('  Flight pattern (Pearson):', flightPatternScore.toFixed(3), '→ normalized:', fpNorm.toFixed(3));
-  console.log('  Hold ratio score:', holdRatioScore.toFixed(3));
-  console.log('  Duration score:', durScore.toFixed(3));
-  if (mouseScore != null) {
-    console.log('  Mouse score:', mouseScore.toFixed(3));
-    console.log('  Mobile confidence:', mobileConfidence.toFixed(3));
+  if (DEBUG_AUTH) {
+    console.log('[VAULTLESS AUTH DEBUG]');
+    console.log('  Hold pattern (Pearson):', holdPatternScore.toFixed(3), '→ normalized:', hpNorm.toFixed(3));
+    console.log('  Flight pattern (Pearson):', flightPatternScore.toFixed(3), '→ normalized:', fpNorm.toFixed(3));
+    console.log('  Hold ratio score:', holdRatioScore.toFixed(3));
+    console.log('  Duration score:', durScore.toFixed(3));
+    if (mouseScore != null) {
+      console.log('  Mouse score:', mouseScore.toFixed(3));
+      console.log('  Mobile confidence:', mobileConfidence.toFixed(3));
+    }
+    console.log('  FINAL SCORE:', score.toFixed(3), '→ CLASSIFICATION:', classifyScore(score));
+    console.log('  Live holdTimes:', liveK.holdTimes?.slice(0, 5).map(n => n.toFixed(0)));
+    console.log('  Enroll holdTimes:', enrollK.holdTimes?.slice(0, 5).map(n => n.toFixed(0)));
+    console.log('  Live flightTimes:', liveK.flightTimes?.slice(0, 5).map(n => n.toFixed(0)));
+    console.log('  Enroll flightTimes:', enrollK.flightTimes?.slice(0, 5).map(n => n.toFixed(0)));
   }
-  console.log('  FINAL SCORE:', score.toFixed(3), '→ CLASSIFICATION:', classifyScore(score));
-  console.log('  Live holdTimes:', liveK.holdTimes?.slice(0,5).map(n=>n.toFixed(0)));
-  console.log('  Enroll holdTimes:', enrollK.holdTimes?.slice(0,5).map(n=>n.toFixed(0)));
-  console.log('  Live flightTimes:', liveK.flightTimes?.slice(0,5).map(n=>n.toFixed(0)));
-  console.log('  Enroll flightTimes:', enrollK.flightTimes?.slice(0,5).map(n=>n.toFixed(0)));
 
   return Math.max(0, Math.min(1, score));
 }

@@ -4,14 +4,14 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, detectStress, classifyScore } from '../hooks/behaviouralEngine';
 import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getContract, getSigner, generateNullifier } from '../lib/ethereum';
+import { getActiveWalletAddress, getContract, getSigner, generateNullifier } from '../lib/ethereum';
 import { sendDuressAlert } from '../lib/duressAlert';
 
 const PHRASE = 'Secure my account';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode } = useVaultless();
+  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode, setWalletAddress } = useVaultless();
   const { isMobile } = useViewport();
 
   const [phase, setPhase] = useState('ready'); // ready | typing | scoring | result
@@ -54,6 +54,7 @@ export default function Auth() {
   }, [phase, keystroke.reset, mouse.reset, mouse.startCapture]);
 
   useEffect(() => {
+    if (!isMobile) return;
     if (phase !== 'typing') return;
     const onTouchStartWindow = (e) => mouse.onTouchStart(e);
     const onTouchMoveWindow = (e) => mouse.onTouchMove(e);
@@ -66,19 +67,24 @@ export default function Auth() {
       window.removeEventListener('touchmove', onTouchMoveWindow);
       window.removeEventListener('touchend', onTouchEndWindow);
     };
-  }, [phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
+  }, [isMobile, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
 
   useEffect(() => {
+    if (!isMobile) {
+      setMotionAvailable(false);
+      return;
+    }
     setMotionAvailable(mouse.motionSupported);
-  }, [mouse.motionSupported]);
+  }, [isMobile, mouse.motionSupported]);
 
   useEffect(() => {
+    if (!isMobile) return;
     if (phase !== 'typing') return;
     const interval = setInterval(() => {
       setSensorDiag({ ...mouse.getDiagnostics() });
     }, 250);
     return () => clearInterval(interval);
-  }, [phase, mouse.getDiagnostics]);
+  }, [isMobile, phase, mouse.getDiagnostics]);
 
   useEffect(() => {
     if (keystroke.events.length > 0) {
@@ -99,6 +105,7 @@ export default function Auth() {
   };
 
   const requestSensors = async () => {
+    if (!isMobile) return;
     setSensorRequesting(true);
     try {
       const granted = await mouse.requestSensorAccess();
@@ -113,6 +120,22 @@ export default function Auth() {
   };
 
   const processAuth = async () => {
+    let activeWalletAddress = null;
+    if (!demoMode) {
+      try {
+        activeWalletAddress = await getActiveWalletAddress();
+        setWalletAddress(activeWalletAddress);
+      } catch (e) {
+        setStatusMsg(e.message || 'MetaMask connection failed.');
+        return;
+      }
+
+      if (walletAddress && activeWalletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        setStatusMsg('The connected MetaMask wallet does not match the enrolled wallet. Switch accounts in MetaMask and try again.');
+        return;
+      }
+    }
+
     setPhase('scoring');
 
     const kData = keystroke.extractVector(PHRASE);
@@ -176,7 +199,7 @@ export default function Auth() {
           return;
         }
         const signer = await getSigner();
-        const addr = await signer.getAddress();
+        const addr = activeWalletAddress || await signer.getAddress();
         const nullifier = generateNullifier(liveVector, addr);
         const contract = await getContract(signer);
         const tx = await contract.authenticate(nullifier);
@@ -266,7 +289,7 @@ export default function Auth() {
   const sensorsEnabled = motionAvailable || sensorDiag.motionPermission === 'granted' || sensorDiag.orientationPermission === 'granted';
   const isMobilePlatform = sensorDiag.platform === 'ios' || sensorDiag.platform === 'android';
   const hasSensorApi = sensorDiag.hasDeviceMotion || sensorDiag.hasDeviceOrientation;
-  const showMobileSensorUi = isMobilePlatform && hasSensorApi;
+  const showMobileSensorUi = isMobile && isMobilePlatform && hasSensorApi;
   const sensorBlockedHint = insecureContext
     ? 'Motion sensors need a secure connection. Open the app over HTTPS and try again.'
     : sensorDiag.platform === 'android' && sensorDiag.browser === 'chrome'

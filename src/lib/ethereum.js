@@ -38,7 +38,10 @@ function getInjectedEthereum() {
   if (!ethereum) return null;
 
   if (Array.isArray(ethereum.providers) && ethereum.providers.length > 0) {
-    return ethereum.providers.find((provider) => provider?.isMetaMask) || ethereum.providers[0];
+    const metaMaskProvider = ethereum.providers.find((provider) => provider?.isMetaMask && !provider?.isBraveWallet);
+    return metaMaskProvider
+      || ethereum.providers.find((provider) => provider?.isMetaMask)
+      || ethereum.providers[0];
   }
 
   return ethereum;
@@ -46,6 +49,20 @@ function getInjectedEthereum() {
 
 function isMetaMaskProvider(provider) {
   return Boolean(provider?.isMetaMask);
+}
+
+async function requestMetaMaskAccounts(ethereumProvider) {
+  try {
+    const accounts = await ethereumProvider.request({ method: 'eth_requestAccounts' });
+    if (Array.isArray(accounts) && accounts.length > 0) return accounts;
+  } catch (error) {
+    if (error?.code === 4001) {
+      throw new Error('MetaMask connection request was rejected.');
+    }
+    throw error;
+  }
+
+  throw new Error('MetaMask did not return any accounts.');
 }
 
 export function isMobileBrowser() {
@@ -104,9 +121,9 @@ export async function getProvider(options = {}) {
     throw new Error('MetaMask not found');
   }
 
-  const provider = new ethers.BrowserProvider(injectedEthereum);
-  await provider.send('eth_requestAccounts', []);
   await ensureSepolia(injectedEthereum);
+  await requestMetaMaskAccounts(injectedEthereum);
+  const provider = new ethers.BrowserProvider(injectedEthereum);
   return provider;
 }
 
@@ -142,6 +159,12 @@ export async function ensureSepolia(ethereumProvider) {
 export async function getSigner() {
   const provider = await getProvider();
   return provider.getSigner();
+}
+
+export async function getActiveWalletAddress(options = {}) {
+  const provider = await getProvider(options);
+  const signer = await provider.getSigner();
+  return signer.getAddress();
 }
 
 export async function getContract(signerOrProvider) {
