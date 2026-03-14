@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const VaultlessContext = createContext(null);
+const DEMO_MODE_STORAGE_KEY = 'vaultless_demo_mode';
 
 // Float32Array can't be JSON.stringify'd directly — convert to/from plain array
 function serializeVector(v) {
@@ -43,6 +44,38 @@ function saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse,
   }
 }
 
+function loadDemoMode() {
+  try {
+    const provider = window?.ethereum;
+    const hasMetaMask = Boolean(
+      provider?.isMetaMask ||
+      provider?.providers?.some((item) => item?.isMetaMask)
+    );
+
+    if (hasMetaMask) return false;
+  } catch {
+    // ignore provider detection failures
+  }
+
+  try {
+    const saved = localStorage.getItem(DEMO_MODE_STORAGE_KEY);
+    if (saved === 'true') return true;
+    if (saved === 'false') return false;
+  } catch {
+    // ignore storage failures
+  }
+
+  return import.meta.env.VITE_DEMO_MODE === 'true';
+}
+
+function saveDemoMode(value) {
+  try {
+    localStorage.setItem(DEMO_MODE_STORAGE_KEY, String(Boolean(value)));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function VaultlessProvider({ children }) {
   const saved = loadFromStorage();
 
@@ -56,9 +89,7 @@ export function VaultlessProvider({ children }) {
   const [isDuressMode,  setIsDuressMode]  = useState(false);
   const [lastAuthScore, setLastAuthScore] = useState(null);
   const [etherscanLinks, setEtherscanLinks] = useState([]);
-  const [demoMode, setDemoMode] = useState(
-    import.meta.env.VITE_DEMO_MODE === 'true'
-  );
+  const [demoMode, setDemoModeRaw] = useState(loadDemoMode);
 
   // Wrap setters to also persist whenever enrollment data changes
   const setEnrollmentVector = (v) => {
@@ -79,6 +110,10 @@ export function VaultlessProvider({ children }) {
   const setIsEnrolled = (v) => {
     setIsEnrolledRaw(v);
   };
+  const setDemoMode = (value) => {
+    setDemoModeRaw(value);
+    saveDemoMode(value);
+  };
 
   // Persist to localStorage whenever any enrollment field changes
   useEffect(() => {
@@ -88,6 +123,18 @@ export function VaultlessProvider({ children }) {
       console.log('[VAULTLESS] Stored holdTimes:', enrollmentKeystroke.holdTimes?.length, 'flightTimes:', enrollmentKeystroke.flightTimes?.length);
     }
   }, [enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled]);
+
+  useEffect(() => {
+    const provider = window?.ethereum;
+    const hasMetaMask = Boolean(
+      provider?.isMetaMask ||
+      provider?.providers?.some((item) => item?.isMetaMask)
+    );
+
+    if (hasMetaMask && demoMode) {
+      setDemoMode(false);
+    }
+  }, [demoMode]);
 
   const addEtherscanLink = (label, txHash) => {
     setEtherscanLinks(prev => [...prev, {

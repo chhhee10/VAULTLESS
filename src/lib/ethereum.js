@@ -17,6 +17,20 @@ export const CONTRACT_ABI = [
   "event DuressActivated(address indexed user, uint256 timestamp)",
 ];
 
+export const SEPOLIA_CHAIN_ID = '0xaa36a7';
+export const SEPOLIA_CHAIN_ID_DECIMAL = 11155111;
+const SEPOLIA_PARAMS = {
+  chainId: SEPOLIA_CHAIN_ID,
+  chainName: 'Sepolia',
+  nativeCurrency: {
+    name: 'Sepolia ETH',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: ['https://rpc.sepolia.org'],
+  blockExplorerUrls: ['https://sepolia.etherscan.io'],
+};
+
 function getInjectedEthereum() {
   if (typeof window === 'undefined') return null;
 
@@ -92,7 +106,37 @@ export async function getProvider(options = {}) {
 
   const provider = new ethers.BrowserProvider(injectedEthereum);
   await provider.send('eth_requestAccounts', []);
+  await ensureSepolia(injectedEthereum);
   return provider;
+}
+
+export async function ensureSepolia(ethereumProvider) {
+  const provider = ethereumProvider || getInjectedEthereum();
+  if (!provider) throw new Error('MetaMask not found');
+
+  const currentChainId = await provider.request({ method: 'eth_chainId' });
+  if (currentChainId === SEPOLIA_CHAIN_ID) return;
+
+  try {
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: SEPOLIA_CHAIN_ID }],
+    });
+  } catch (error) {
+    if (error?.code === 4902) {
+      await provider.request({
+        method: 'wallet_addEthereumChain',
+        params: [SEPOLIA_PARAMS],
+      });
+      return;
+    }
+
+    if (error?.code === 4001) {
+      throw new Error('Please switch MetaMask to the Sepolia network to continue.');
+    }
+
+    throw new Error('Could not switch MetaMask to the Sepolia network.');
+  }
 }
 
 export async function getSigner() {
