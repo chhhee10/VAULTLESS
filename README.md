@@ -3,11 +3,11 @@
 # ⬡ VAULTLESS
 
 **Behavioural biometric authentication anchored to the Ethereum blockchain.**
-*Your typing rhythm is your password. You can't steal a habit.*
 
+*your password is how you move*
 &nbsp;
 
-[▶&nbsp;&nbsp;Video&nbsp;Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa) &nbsp;&nbsp;•&nbsp;&nbsp; [🌐&nbsp;&nbsp;Visit&nbsp;Site](https://vaultless-sys.vercel.app/) &nbsp;&nbsp;•&nbsp;&nbsp; [🏆&nbsp;&nbsp;Devfolio](https://devfolio.co/projects/vaultless-dea4)
+**[▶ Video Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
 
 </div>
 
@@ -56,7 +56,7 @@ VAULTLESS is designed as a prototype for security that protects people, not just
 | Journalists & activists | Coercion-aware duress flow avoids obvious alert to attacker |
 | Security teams | Transparent on-chain event log for high-trust systems |
 
-The **duress flow** is especially important: in a coercive situation, the goal is not only to block access but to protect the user without obviously alerting the attacker — making VAULTLESS a prototype for more *humane* security.
+The **duress flow** is especially important: in a coercive situation, the goal is not only to block access but to protect the user without obviously alerting the attacker — making VAULTLESS a prototype for more humane security.
 
 ---
 
@@ -74,7 +74,7 @@ VAULTLESS replaces static credentials with a **behavioural profile** built from 
 | Accelerometer | — | ✅ (where supported) |
 | Rhythm variance / stress | ✅ | ✅ |
 
-The app guides a user through **enrollment**, compares live behaviour during **authentication**, and routes the session into one of three outcomes:
+The app routes every authentication attempt into one of three outcomes:
 
 | Result | Score | Action |
 |---|---|---|
@@ -86,7 +86,7 @@ The app guides a user through **enrollment**, compares live behaviour during **a
 
 ## 🎹 How Keystrokes Are Captured
 
-When a user types the enrollment phrase `"Secure my account"`, the browser captures precise sub-millisecond timing for every key press using `performance.now()`.
+When the user types `"Secure my account"`, the browser records precise timing for every key event using `performance.now()`.
 
 ```
 +-------+-------+-------+-------+-------+-------+
@@ -94,11 +94,14 @@ When a user types the enrollment phrase `"Secure my account"`, the browser captu
 | key 1 | key 2 | key 3 | key 4 | key 5 | key 6 |
 +-------+-------+-------+-------+-------+-------+
 
-  [###]  [#]  [###]    [#]   [###]  [#]
---+   +--+ +--+  +-----+ +--+   +--+ +----------->  time
+Timeline:
 
-  [###]  =  Hold time   : how long each key is physically pressed
-  -----  =  Flight time : gap from key-up to the next key-down
+  key down -----> key up    key down -----> key up
+      |<--hold-->|              |<--hold-->|
+                  |<--flight--->|
+
+  hold time   = duration the key is physically pressed (ms)
+  flight time = gap from key-up to the next key-down  (ms)
 ```
 
 Two arrays are extracted per sample:
@@ -118,24 +121,25 @@ flightTimes[] = [128, 184, 160, 104, 176, ...]      ms between keys
 
 ## 📐 Z-Score Normalisation — Speed-Independent Identity
 
-Raw timing values differ between a fast typist and a slow typist even when they have the *same rhythm*. Z-score normalisation removes speed and preserves **shape** — the relative pattern that is unique to each person.
+Raw timing differs between a fast and slow typist even when their rhythm is identical. Z-score normalisation removes speed and keeps only **shape** — the relative pattern unique to each person.
 
 ```
-Person A  (fast typist)                  Person B  (slow typist, same rhythm)
--------------------------------          ------------------------------------
-Raw: [55, 29, 45, 17, 39, 51] ms         Raw: [110, 58, 90, 34, 78, 102] ms
-     mean ~= 39 ms                             mean ~= 79 ms
+Person A  (fast typist)
+  Raw:  [55, 29, 45, 17, 39, 51] ms   mean ~= 39 ms
+
+Person B  (slow typist, same rhythm)
+  Raw: [110, 58, 90, 34, 78, 102] ms  mean ~= 79 ms
 
                     |
                     |   z = (value - mean) / std
                     v
 
-         Both produce the SAME z-normalised shape:
-         [+1.1, -0.7, +0.3, -1.6, -0.1, +0.9]
-                mean=0   std=1   speed removed
+  Both produce the SAME z-normalised shape:
+  [+1.1, -0.7, +0.3, -1.6, -0.1, +0.9]
+   mean=0   std=1   speed removed
 
-  Same person fast + same person slow  -->  identical z-shape    (PASS)
-  Two different people                 -->  very different shape  (FAIL)
+  Same person fast vs slow  -->  identical z-shape    (PASS)
+  Two different people       -->  very different shape (FAIL)
 ```
 
 This is why VAULTLESS uses `holdTimesZ` and `flightTimesZ` — not raw arrays — as the primary identity fingerprint.
@@ -144,26 +148,56 @@ This is why VAULTLESS uses `holdTimesZ` and `flightTimesZ` — not raw arrays �
 
 ## 📋 Enrollment — Building the Biometric Profile
 
-Enrollment requires **3 separate samples** of the phrase `"Secure my account"`. This multi-sample approach reduces noise and produces a stable baseline.
+Enrollment requires **3 separate samples** of `"Secure my account"`. The multi-sample approach reduces noise and produces a stable baseline.
 
 ```
-+---------------+
-|   Sample 1    |
-|  holdTimes[]  |--+
-+---------------+  |
-                   |
-+---------------+  |   +----------------------+   +------------------+   +---------------+
-|   Sample 2    |--+-->|   Average profile    |-->|  Float32Array    |-->|   keccak256   |
-|  holdTimes[]  |  |   |  min-length aligned  |   |  64-dim vector   |   |  bytes32 hash |
-+---------------+  |   |  3-sample mean/key   |   |  normalised 0-1  |   |  -> Ethereum  |
-                   |   +----------------------+   +------------------+   +---------------+
-+---------------+  |
-|   Sample 3    |--+
-|  holdTimes[]  |
-+---------------+
+  Sample 1: holdTimes[], flightTimes[]
+       |
+       v
+  Sample 2: holdTimes[], flightTimes[]
+       |
+       v
+  Sample 3: holdTimes[], flightTimes[]
+       |
+       v
+  Average all 3 samples (min-length aligned, mean per key position)
+       |
+       +--> enrollmentKeystroke { holdTimes, flightTimes, holdTimesZ, flightTimesZ, ... }
+       +--> enrollmentMouse     { velocities, angleDiffs, gyroMag, ... }
+       |
+       v
+  buildCombinedVector()
+       |
+       v
+  Float32Array[64]
+    [0-19]   hold times per key    (normalised 0-1)
+    [20-39]  flight times per key  (normalised 0-1)
+    [40-63]  scalar summaries + motion features
+       |
+       v
+  vectorToHash()  -->  bytes32 commitmentHash  (keccak256 of first 32 bytes)
+       |
+       +--[LOCAL]--> localStorage
+       |             stores: full keystroke profile, mouse profile,
+       |             wallet address, recovery email
+       |
+       +--[CHAIN]--> contract.register(commitmentHash)
+                          |
+                          v
+                     Sepolia stores:
+                     identities[wallet] = {
+                       commitmentHash,
+                       enrolledAt: block.timestamp,
+                       isLocked: false,
+                       exists: true
+                     }
+                     emit Registered(user, timestamp)
+                          |
+                          v
+                     visible on Etherscan
 
-<------- Stored locally: full keystroke + mouse profile ------->   <-- On-chain: hash only -->
-              (holdTimes, flightTimes, z-vectors, scalars)              (irreversible, private)
+  LOCAL stores full profile (context + raw arrays)
+  CHAIN stores commitment hash only (irreversible, private)
 ```
 
 **What gets stored where:**
@@ -175,150 +209,168 @@ Enrollment requires **3 separate samples** of the phrase `"Secure my account"`. 
 | Commitment hash | Ethereum Sepolia | `bytes32` keccak256 of Float32Array vector |
 | Wallet address | `localStorage` + chain | Used to look up identity in contract |
 
-The commitment hash is computed from the first 32 bytes of the Float32Array (each `float -> uint8` scaled 0–255, packed as hex), then registered via `contract.register(commitmentHash)`.
-
 ---
 
 ## 🧠 Authentication Scoring Engine
 
-When the user types the phrase during authentication, a live sample is compared against the enrolled baseline using four weighted components:
+A live sample is compared against the enrolled baseline using four weighted components:
 
 ```
-  Live holdTimesZ     --+
-                        +--->  Hold shape (Pearson)    x 0.40  --+
-  Enrolled holdTimesZ --+      which keys do you linger on?      |
-                                                                  |
-  Live holdTimes      --+                                         |
-                        +--->  Hold magnitude (ratio)  x 0.25  --+-->  Final score 0.0 - 1.0
-  Enrolled holdTimes  --+      per-key duration match?           |     (weighted sum)
-                                                                  |
-  Live flightTimesZ   --+                                         |       >= 0.70  -->  Authenticated
-                        +--->  Flight shape (Pearson)  x 0.25  --+       0.60-0.70 --> Duress
-  Enrolled flightTimesZ-+      between-key rhythm match?         |       < 0.60   -->  Rejected
-                                                                  |
-                        [ Duration ratio               x 0.10 ]--+
-                          overall speed match
+  Live holdTimesZ + Enrolled holdTimesZ
+       |
+       v
+  [1] Hold shape (Pearson correlation)         weight x 0.40
+      "which keys do you linger on?"
+       |
+  Live holdTimes + Enrolled holdTimes
+       |
+       v
+  [2] Hold magnitude (ratio similarity)        weight x 0.25
+      "are relative key durations the same?"
+       |
+  Live flightTimesZ + Enrolled flightTimesZ
+       |
+       v
+  [3] Flight shape (Pearson correlation)       weight x 0.25
+      "what is your between-key rhythm?"
+       |
+  Live totalDuration vs Enrolled totalDuration
+       |
+       v
+  [4] Duration ratio (min/max)                 weight x 0.10
+      "overall speed match"
+       |
+       v
+  keystroke score  (0.0 - 1.0)
+       |
+       v
+  if enrolled mouse data exists:
+    final score = (keystroke score x 0.85) + (mouse/gesture score x 0.15)
+  else:
+    final score = keystroke score
+       |
+       v
+  detectStress():  liveVariance > enrollVariance x 2.5 ?
+       |
+       v
+  classifyScore(score, isStress)
+       |
+       +-- score >= 0.70              --> AUTHENTICATED
+       +-- score 0.60-0.70 + stress   --> DURESS
+       +-- score < 0.60               --> REJECTED
 ```
 
 **Score component breakdown:**
 
 | Component | Weight | Method | What it measures |
 |---|---|---|---|
-| Hold shape | 40% | Pearson correlation on `holdTimesZ` | Which keys you linger on — your personal key identity |
-| Hold magnitude | 25% | Ratio similarity on raw `holdTimes` | Per-key duration proportions, speed-normalised |
-| Flight shape | 25% | Pearson correlation on `flightTimesZ` | Between-key rhythm and pacing style |
-| Duration ratio | 10% | `min/max` of total duration | Overall typing speed match |
-
-When mouse / touch / motion data is available from enrollment, a fifth component is blended in:
-
-```
-Final score = (keystroke score x 0.85) + (mouse/gesture score x 0.15)
-```
-
-**Stress detection** fires when live rhythm variance exceeds `2.5x` the enrollment baseline — a signal the user may be under pressure — pushing a borderline score into the duress path.
+| Hold shape | 40% | Pearson on `holdTimesZ` | Which keys you linger on |
+| Hold magnitude | 25% | Ratio similarity on `holdTimes` | Per-key duration proportions |
+| Flight shape | 25% | Pearson on `flightTimesZ` | Between-key rhythm and pacing |
+| Duration ratio | 10% | `min/max` of total duration | Overall speed match |
 
 ---
 
 ## 🔄 Full System Workflow — End-to-End
 
 ```
-+===================================================================================+
-|                    VAULTLESS  --  COMPLETE SYSTEM FLOW                            |
-+===================================================================================+
-|                                                                                   |
-|  +-----------------------------------------------------------------------------+ |
-|  |  PHASE 1  --  ENROLLMENT                                                    | |
-|  +-----------------------------------------------------------------------------+ |
-|                                                                                   |
-|  User visits /enroll                                                              |
-|       |                                                                           |
-|       v                                                                           |
-|  Types "Secure my account" x3                                                     |
-|       |  keystroke.onKeyDown / onKeyUp  -->  holdTimes[], flightTimes[]          |
-|       |  mouse.onMouseMove / onTouchMove --> velocities[], angleDiffs[]          |
-|       |  gyro + accelerometer (mobile, if permitted)                             |
-|       v                                                                           |
-|  extractVector()  called after each of the 3 samples                             |
-|       |                                                                           |
-|       v                                                                           |
-|  Average 3 samples                                                                |
-|       |  enrollmentKeystroke: { holdTimes, flightTimes, holdTimesZ, ...  }       |
-|       |  enrollmentMouse:     { velocities, angleDiffs, gyroMag, ...    }        |
-|       v                                                                           |
-|  buildCombinedVector()  -->  Float32Array[64]                                     |
-|       |  [0-19]   hold times per key                                             |
-|       |  [20-39]  flight times per key                                           |
-|       |  [40-63]  scalar summaries + motion features                             |
-|       v                                                                           |
-|  vectorToHash()  -->  bytes32 commitmentHash  (keccak256 of first 32 bytes)       |
-|       |                                                                           |
-|       +--[LOCAL]-->  localStorage                                                 |
-|       |              full profile + wallet address + recovery email              |
-|       |                                                                           |
-|       +--[CHAIN]-->  contract.register(commitmentHash)                            |
-|                           |                                                       |
-|                           v                                                       |
-|                      Sepolia stores:                                              |
-|                      identities[wallet] = {                                       |
-|                        commitmentHash,                                            |
-|                        enrolledAt: block.timestamp,                               |
-|                        isLocked: false,                                           |
-|                        exists: true                                               |
-|                      }                                                            |
-|                      emit Registered(user, timestamp)  -->  Etherscan             |
-|                                                                                   |
-+===================================================================================+
-|                                                                                   |
-|  +-----------------------------------------------------------------------------+ |
-|  |  PHASE 2  --  AUTHENTICATION                                                | |
-|  +-----------------------------------------------------------------------------+ |
-|                                                                                   |
-|  User visits /auth                                                                |
-|       |                                                                           |
-|       v                                                                           |
-|  Types "Secure my account" once                                                   |
-|       |  live keystroke + mouse/touch captured                                   |
-|       v                                                                           |
-|  extractVector()  -->  liveKeystroke,  liveMouse                                  |
-|       |                                                                           |
-|       v                                                                           |
-|  cosineSimilarity(liveKeystroke, enrolledKeystroke, liveMouse, enrolledMouse)     |
-|       |   holdShape  (Pearson)  x 0.40                                           |
-|       | + holdMagnitude (ratio) x 0.25                                           |
-|       | + flightShape (Pearson) x 0.25                                           |
-|       | + durationRatio         x 0.10                                           |
-|       | + mouseScore            x 0.15  (only if enrolled mouse data exists)     |
-|       v                                                                           |
-|  score  =  0.0  to  1.0                                                          |
-|       |                                                                           |
-|  detectStress():  liveVariance > enrollVariance x 2.5  ?                         |
-|       |                                                                           |
-|       v                                                                           |
-|  classifyScore(score, isStress)                                                   |
-|       |                                                                           |
-|       +--------------------+-------------------+                                 |
-|       |                    |                   |                                 |
-|       v                    v                   v                                 |
-|  score >= 0.70       0.60-0.70 + stress   score < 0.60                          |
-|  AUTHENTICATED           DURESS             REJECTED                             |
-|       |                    |                   |                                 |
-|       v                    v                   v                                 |
-|  [CHAIN]              [CHAIN]             [CHAIN]                                |
-|  generateNullifier()  triggerDuress()     authFailed()                           |
-|  contract.            emit               emit                                    |
-|  authenticate(n)      DuressActivated    AuthFailed                              |
-|  emit AuthSuccess          |                   |                                 |
-|       |                    v                   v                                 |
-|       v               sendDuressAlert()   /auth  (retry)                         |
-|  /dashboard           via EmailJS                                                |
-|  (real session)            |                                                     |
-|                            +--[LOCAL]-->  setIsDuressMode(true)                  |
-|                            |                                                     |
-|                            +--[ROUTE]-->  /ghost                                 |
-|                                           (decoy dashboard --                    |
-|                                            attacker sees nothing unusual)        |
-|                                                                                  |
-+==================================================================================+
+  ================================================================
+   PHASE 1 — ENROLLMENT
+  ================================================================
+
+  User visits /enroll
+       |
+       v
+  Types "Secure my account" x3
+       |  keystroke.onKeyDown / onKeyUp captures holdTimes[], flightTimes[]
+       |  mouse.onMouseMove / onTouchMove captures velocities[], angleDiffs[]
+       |  gyro + accelerometer captured on mobile (if browser permits)
+       v
+  extractVector() called after each sample
+       |
+       v
+  Average 3 samples
+       |  enrollmentKeystroke: { holdTimes, flightTimes, holdTimesZ, ... }
+       |  enrollmentMouse:     { velocities, angleDiffs, gyroMag, ...   }
+       v
+  buildCombinedVector()  -->  Float32Array[64]
+       |
+       v
+  vectorToHash()  -->  bytes32 commitmentHash
+       |
+       +--[LOCAL]-->  localStorage
+       |              (full profile + wallet address + recovery email)
+       |
+       +--[CHAIN]-->  contract.register(commitmentHash)
+                           |
+                           v
+                      Sepolia: identities[wallet] = { hash, ts, isLocked: false }
+                      emit Registered(user, timestamp)  -->  Etherscan
+
+  ================================================================
+   PHASE 2 — AUTHENTICATION
+  ================================================================
+
+  User visits /auth
+       |
+       v
+  Types "Secure my account" once
+       |  live keystroke + mouse/touch captured
+       v
+  extractVector()  -->  liveKeystroke, liveMouse
+       |
+       v
+  cosineSimilarity(liveKeystroke, enrolledKeystroke, liveMouse, enrolledMouse)
+       |  holdShape (Pearson)  x 0.40
+       |  holdMagnitude        x 0.25
+       |  flightShape (Pearson)x 0.25
+       |  durationRatio        x 0.10
+       |  mouseScore           x 0.15  (only if enrolled mouse data exists)
+       v
+  score = 0.0 to 1.0
+       |
+       v
+  detectStress():  liveVariance > enrollVariance x 2.5 ?
+       |
+       v
+  classifyScore(score, isStress)
+       |
+       +---------- score >= 0.70 ----------> AUTHENTICATED
+       |                                          |
+       |                                          v
+       |                                   generateNullifier(vector, addr, ts)
+       |                                          |
+       |                                          v
+       |                                   contract.authenticate(nullifier)
+       |                                   emit AuthSuccess
+       |                                          |
+       |                                          v
+       |                                   /dashboard  (real session)
+       |
+       +--- 0.60-0.70 + stress detected --> DURESS
+       |                                          |
+       |                                          v
+       |                                   contract.triggerDuress()
+       |                                   emit DuressActivated
+       |                                          |
+       |                                          v
+       |                                   sendDuressAlert() via EmailJS
+       |                                          |
+       |                                          v
+       |                                   setIsDuressMode(true)
+       |                                          |
+       |                                          v
+       |                                   /ghost  (decoy dashboard)
+       |                                   attacker sees nothing unusual
+       |
+       +---------- score < 0.60 ----------> REJECTED
+                                                  |
+                                                  v
+                                           contract.authFailed()
+                                           emit AuthFailed
+                                                  |
+                                                  v
+                                           /auth  (show rejection UI)
 ```
 
 ---
@@ -328,53 +380,86 @@ Final score = (keystroke score x 0.85) + (mouse/gesture score x 0.15)
 > Applies when `VITE_DEMO_MODE=false` and MetaMask is connected to Sepolia.
 
 ```
-USER BROWSER               METAMASK WALLET          SEPOLIA BLOCKCHAIN
-============               ===============          ==================
+  ----------------------------------------------------------------
+   ENROLL
+  ----------------------------------------------------------------
 
---- ENROLL ---------------------------------------------------------------
-
-Build Float32Array[64]
-vectorToHash() -> bytes32
-                       -->  Sign & broadcast tx  -->  VaultlessCore.register(hash)
-                                                       identities[addr] = { hash, ts }
-                                                       emit Registered(addr, ts)
-                       <--  tx receipt          <----  Etherscan confirms
-addEtherscanLink("Enrolled", txHash)
-Link visible in Dashboard panel
-
-
---- AUTH : score >= 0.70  (AUTHENTICATED) --------------------------------
-
-Live sample captured
-Score: 0.87  --> AUTHENTICATED
-generateNullifier(
-  vector, addr, ts)
-  -->  -->  -->  -->  -->  Sign & broadcast tx  -->  usedNullifiers[n] = true
-  keccak256 packed                                   (replay attack blocked)
-                                                     contract.authenticate(n)
-                                                     emit AuthSuccess(addr, n, ts)
-                       <--  tx receipt          <----  Etherscan confirms
-navigate('/dashboard')
+  Browser builds Float32Array[64]
+       |
+       v
+  vectorToHash()  -->  bytes32 commitmentHash
+       |
+       v
+  MetaMask signs tx
+       |
+       v
+  VaultlessCore.register(commitmentHash) on Sepolia
+       |
+       v
+  identities[addr] = { commitmentHash, enrolledAt, isLocked: false }
+  emit Registered(addr, timestamp)
+       |
+       v
+  tx receipt returned to browser
+  addEtherscanLink("Enrolled", txHash)  -->  link shown in Dashboard
 
 
---- AUTH : score 0.60-0.70 + stress  (DURESS) ----------------------------
+  ----------------------------------------------------------------
+   AUTH: score >= 0.70  -->  AUTHENTICATED
+  ----------------------------------------------------------------
 
-Score: 0.65 + stress
--->  DURESS
-                       -->  Sign & broadcast tx  -->  contract.triggerDuress()
-                                                       emit DuressActivated(addr, ts)
-                       <--  tx receipt          <----  Etherscan confirms
-sendDuressAlert() --> EmailJS --> recovery email inbox
-navigate('/ghost')  (decoy session, attacker unaware)
+  generateNullifier(vector, addr, timestamp)
+  keccak256(vectorHash + walletAddr + ts)
+       |
+       v
+  MetaMask signs tx
+       |
+       v
+  VaultlessCore.authenticate(nullifier) on Sepolia
+       |  usedNullifiers[nullifier] = true  (replay attack blocked)
+       v
+  emit AuthSuccess(addr, nullifier, timestamp)
+       |
+       v
+  tx receipt  -->  navigate('/dashboard')
 
 
---- AUTH : score < 0.60  (REJECTED) --------------------------------------
+  ----------------------------------------------------------------
+   AUTH: score 0.60-0.70 + stress  -->  DURESS
+  ----------------------------------------------------------------
 
-Score: 0.42  --> REJECTED
-                       -->  Sign & broadcast tx  -->  contract.authFailed()
-                                                       emit AuthFailed(addr, ts)
-                       <--  tx receipt          <----  Etherscan confirms
-Show rejection UI
+  MetaMask signs tx
+       |
+       v
+  VaultlessCore.triggerDuress() on Sepolia
+       |
+       v
+  emit DuressActivated(addr, timestamp)
+       |
+       v
+  tx receipt
+       |
+       +-->  sendDuressAlert() via EmailJS  -->  recovery email inbox
+       |
+       +-->  setIsDuressMode(true)
+       |
+       +-->  navigate('/ghost')  (decoy session, attacker sees nothing)
+
+
+  ----------------------------------------------------------------
+   AUTH: score < 0.60  -->  REJECTED
+  ----------------------------------------------------------------
+
+  MetaMask signs tx
+       |
+       v
+  VaultlessCore.authFailed() on Sepolia
+       |
+       v
+  emit AuthFailed(addr, timestamp)
+       |
+       v
+  tx receipt  -->  show rejection UI on /auth
 ```
 
 **Replay attack protection:** Every successful authentication burns a unique nullifier derived from `keccak256(vectorHash + walletAddress + timestamp)`. The contract stores used nullifiers and rejects any repeat submission — a captured transaction cannot be replayed.
@@ -394,22 +479,24 @@ If the typing pattern scores in the duress band **and** stress is detected (live
   classifyScore()  -->  "duress"
        |
        +--[CHAIN]-->  contract.triggerDuress()
-       |              emit DuressActivated(addr, ts)  -->  Etherscan (public, permanent)
+       |              emit DuressActivated(addr, ts)
+       |              permanently visible on Etherscan
        |
        +--[EMAIL]-->  sendDuressAlert() via EmailJS
-       |              recovery email: wallet addr + timestamp + Etherscan link
+       |              recovery email receives:
+       |              wallet address + timestamp + Etherscan link
        |
        +--[LOCAL]-->  setIsDuressMode(true)
        |              real account context is isolated
        |
        +--[ROUTE]-->  navigate('/ghost')
-                      Ghost.jsx renders Dashboard.jsx (isGhost=true)
+                      Ghost.jsx renders Dashboard.jsx with isGhost=true
                       URL does NOT visibly change
-                      Attacker sees a normal authenticated session
-                      Real account is safe on-chain
+                      attacker sees a normal authenticated session
+                      real account is safe on-chain
 ```
 
-The `/ghost` route renders **the exact same Dashboard component** — visually indistinguishable. Meanwhile the real account is flagged on-chain and the owner receives an alert.
+The `/ghost` route renders the **exact same Dashboard component** — visually indistinguishable from a real session. The real account is flagged on-chain and the owner receives an alert.
 
 ---
 
@@ -418,34 +505,34 @@ The `/ghost` route renders **the exact same Dashboard component** — visually i
 When duress is detected, VAULTLESS sends an automated alert to the recovery email set during enrollment via EmailJS:
 
 ```
-+------------------------------------------------------------------------+
-|  O  VAULTLESS   Security Engine                                        |
-+------------------------------------------------------------------------+
-|                                                                        |
-|  [!] Duress Alert -- Protective Mode Activated                         |
-|                                                                        |
-|  VAULTLESS detected a potential coercion or high-stress                |
-|  authentication attempt and automatically activated protection.        |
-|                                                                        |
-|  +------------------------------------------------------------------+  |
-|  |  Incident Details                                                |  |
-|  |  Wallet Address:  0xABC...1234                                   |  |
-|  |  Time:            14/03/2026, 19:11:27                           |  |
-|  |  Transaction:     View on Etherscan /                            |  |
-|  +------------------------------------------------------------------+  |
-|                                                                        |
-|  Recommended Actions                                                   |
-|  1. Verify recent account activity immediately                         |
-|  2. Rotate critical credentials if needed                              |
-|  3. Re-authenticate from a trusted device/network                     |
-|  4. Contact your security/admin team if this was not expected          |
-|                                                                        |
-|  If this was you and safe, you can continue using VAULTLESS            |
-|  normally after verification.                                          |
-|                                                                        |
-|  Stay safe,                                                            |
-|  O  VAULTLESS Security Engine                                          |
-+------------------------------------------------------------------------+
+  +------------------------------------------------------------------------+
+  |  O  VAULTLESS   Security Engine                                        |
+  +------------------------------------------------------------------------+
+  |                                                                        |
+  |  [!] Duress Alert -- Protective Mode Activated                         |
+  |                                                                        |
+  |  VAULTLESS detected a potential coercion or high-stress                |
+  |  authentication attempt and automatically activated protection.        |
+  |                                                                        |
+  |  +------------------------------------------------------------------+  |
+  |  |  Incident Details                                                |  |
+  |  |  Wallet Address : 0xABC...1234                                   |  |
+  |  |  Time           : 14/03/2026, 19:11:27                           |  |
+  |  |  Transaction    : View on Etherscan /                            |  |
+  |  +------------------------------------------------------------------+  |
+  |                                                                        |
+  |  Recommended Actions                                                   |
+  |  1. Verify recent account activity immediately                         |
+  |  2. Rotate critical credentials if needed                              |
+  |  3. Re-authenticate from a trusted device / network                    |
+  |  4. Contact your security/admin team if this was not expected          |
+  |                                                                        |
+  |  If this was you and safe, you can continue using VAULTLESS            |
+  |  normally after verification.                                          |
+  |                                                                        |
+  |  Stay safe,                                                            |
+  |  O  VAULTLESS Security Engine                                          |
+  +------------------------------------------------------------------------+
 ```
 
 **Email payload fields sent via EmailJS template:**
@@ -457,7 +544,7 @@ When duress is detected, VAULTLESS sends an automated alert to the recovery emai
 | `wallet_address` | Full wallet address of the affected account |
 | `timestamp` | Human-readable local timestamp of the event |
 | `etherscan_link` | Direct link to the `DuressActivated` transaction on Sepolia Etherscan |
-| `message` | Full incident summary including wallet, time, Etherscan URL, and status |
+| `message` | Full incident summary: wallet, time, Etherscan URL, and account status |
 
 Configure via `VITE_EMAILJS_SERVICE_ID`, `VITE_EMAILJS_TEMPLATE_ID`, and `VITE_EMAILJS_PUBLIC_KEY` in `.env`.
 
@@ -489,7 +576,7 @@ mapping(bytes32 => bool)     public usedNullifiers;  // replay protection
 | `authenticate(bytes32 nullifier)` | Registered, not locked | Record successful auth. Burns nullifier to block replay. |
 | `authFailed()` | Registered | Log a failed authentication attempt. |
 | `triggerDuress()` | Registered | Log duress event on-chain. Does not lock account. |
-| `refine(bytes32 newHash)` | Registered, not locked | Update commitment hash (e.g. after re-enrollment). |
+| `refine(bytes32 newHash)` | Registered, not locked | Update commitment hash after re-enrollment. |
 | `unlockAccount()` | Registered | Self-service unlock after lockout. |
 | `getIdentity(address)` | View | Return identity record for any address. |
 | `isNullifierUsed(bytes32)` | View | Check if a nullifier has been consumed. |
@@ -694,8 +781,8 @@ The scoring weights in `behaviouralEngine.js` can be adjusted if needed:
 
 <div align="center">
 
-Built with ⬡ VAULTLESS — *your behaviour is your key.*
+*your password is how you move*
 
-[▶&nbsp;&nbsp;Video&nbsp;Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa) &nbsp;&nbsp;•&nbsp;&nbsp; [🌐&nbsp;&nbsp;Visit&nbsp;Site](https://vaultless-sys.vercel.app/) &nbsp;&nbsp;•&nbsp;&nbsp; [🏆&nbsp;&nbsp;Devfolio](https://devfolio.co/projects/vaultless-dea4)
+**[▶ Video Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
 
 </div>
