@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, detectStress, classifyScore } from '../hooks/behaviouralEngine';
 import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getActiveWalletAddress, getContract, getSigner, generateNullifier } from '../lib/ethereum';
+import { getActiveWalletAddress, getContract, getSigner, generateNullifier, isMobileBrowser } from '../lib/ethereum';
 import { sendDuressAlert } from '../lib/duressAlert';
 
 const PHRASE = 'Secure my account';
@@ -13,6 +13,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, setIsDuressMode, setLastAuthScore, addEtherscanLink, demoMode, setWalletAddress } = useVaultless();
   const { isMobile } = useViewport();
+  const mobileLikeDevice = isMobileBrowser();
 
   const [phase, setPhase] = useState('ready'); // ready | typing | scoring | result
   const [currentInput, setCurrentInput] = useState('');
@@ -54,7 +55,7 @@ export default function Auth() {
   }, [phase, keystroke.reset, mouse.reset, mouse.startCapture]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (!mobileLikeDevice) return;
     if (phase !== 'typing') return;
     const onTouchStartWindow = (e) => mouse.onTouchStart(e);
     const onTouchMoveWindow = (e) => mouse.onTouchMove(e);
@@ -67,24 +68,24 @@ export default function Auth() {
       window.removeEventListener('touchmove', onTouchMoveWindow);
       window.removeEventListener('touchend', onTouchEndWindow);
     };
-  }, [isMobile, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
+  }, [mobileLikeDevice, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
 
   useEffect(() => {
-    if (!isMobile) {
+    if (!mobileLikeDevice) {
       setMotionAvailable(false);
       return;
     }
     setMotionAvailable(mouse.motionSupported);
-  }, [isMobile, mouse.motionSupported]);
+  }, [mobileLikeDevice, mouse.motionSupported]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (!mobileLikeDevice) return;
     if (phase !== 'typing') return;
     const interval = setInterval(() => {
       setSensorDiag({ ...mouse.getDiagnostics() });
     }, 250);
     return () => clearInterval(interval);
-  }, [isMobile, phase, mouse.getDiagnostics]);
+  }, [mobileLikeDevice, phase, mouse.getDiagnostics]);
 
   useEffect(() => {
     if (keystroke.events.length > 0) {
@@ -105,7 +106,7 @@ export default function Auth() {
   };
 
   const requestSensors = async () => {
-    if (!isMobile) return;
+    if (!mobileLikeDevice) return;
     setSensorRequesting(true);
     try {
       const granted = await mouse.requestSensorAccess();
@@ -289,7 +290,7 @@ export default function Auth() {
   const sensorsEnabled = motionAvailable || sensorDiag.motionPermission === 'granted' || sensorDiag.orientationPermission === 'granted';
   const isMobilePlatform = sensorDiag.platform === 'ios' || sensorDiag.platform === 'android';
   const hasSensorApi = sensorDiag.hasDeviceMotion || sensorDiag.hasDeviceOrientation;
-  const showMobileSensorUi = isMobile && isMobilePlatform && hasSensorApi;
+  const showMobileSensorUi = mobileLikeDevice && isMobilePlatform && hasSensorApi;
   const sensorBlockedHint = insecureContext
     ? 'Motion sensors need a secure connection. Open the app over HTTPS and try again.'
     : sensorDiag.platform === 'android' && sensorDiag.browser === 'chrome'

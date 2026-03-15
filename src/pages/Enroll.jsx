@@ -14,6 +14,7 @@ export default function Enroll() {
   const { setEnrollmentVector, setEnrollmentKeystroke, setEnrollmentMouse, setWalletAddress, setRecoveryEmail, setIsEnrolled, addEtherscanLink, demoMode } = useVaultless();
   const showSensorDebug = import.meta.env.VITE_SHOW_SENSOR_DEBUG === 'true';
   const { isMobile } = useViewport();
+  const mobileLikeDevice = isMobileBrowser();
 
   const [phase, setPhase] = useState('intro'); // intro | capturing | processing | done | error
   const [sampleCount, setSampleCount] = useState(0);
@@ -57,7 +58,7 @@ export default function Enroll() {
   }, [phase, sampleCount, mouse.startCapture]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (!mobileLikeDevice) return;
     if (phase !== 'capturing') return;
     const onTouchStartWindow = (e) => mouse.onTouchStart(e);
     const onTouchMoveWindow = (e) => mouse.onTouchMove(e);
@@ -70,24 +71,24 @@ export default function Enroll() {
       window.removeEventListener('touchmove', onTouchMoveWindow);
       window.removeEventListener('touchend', onTouchEndWindow);
     };
-  }, [isMobile, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
+  }, [mobileLikeDevice, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
 
   useEffect(() => {
-    if (!isMobile) {
+    if (!mobileLikeDevice) {
       setMotionAvailable(false);
       return;
     }
     setMotionAvailable(mouse.motionSupported);
-  }, [isMobile, mouse.motionSupported]);
+  }, [mobileLikeDevice, mouse.motionSupported]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (!mobileLikeDevice) return;
     if (phase !== 'capturing') return;
     const interval = setInterval(() => {
       setSensorDiag({ ...mouse.getDiagnostics() });
     }, 250);
     return () => clearInterval(interval);
-  }, [isMobile, phase, mouse.getDiagnostics]);
+  }, [mobileLikeDevice, phase, mouse.getDiagnostics]);
 
   // Build live graph from keystroke events
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function Enroll() {
   const sensorActivityLive = (sensorDiag.motionEvents || 0) > 0 || (sensorDiag.orientationEvents || 0) > 0;
   const isMobilePlatform = sensorDiag.platform === 'ios' || sensorDiag.platform === 'android';
   const hasSensorApi = sensorDiag.hasDeviceMotion || sensorDiag.hasDeviceOrientation;
-  const showMobileSensorUi = isMobile && isMobilePlatform && hasSensorApi;
+  const showMobileSensorUi = mobileLikeDevice && isMobilePlatform && hasSensorApi;
   const sensorHealthText = !sensorDiag.isSecureContext
     ? 'Secure connection required'
     : sensorsEnabled

@@ -148,7 +148,8 @@ export function useMouseDNA() {
       return { platform: 'unknown', browser: 'unknown' };
     }
     const ua = navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/i.test(ua);
+    const touchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || touchMac;
     const isAndroid = /Android/i.test(ua);
     const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR/i.test(ua);
     const isChrome = /Chrome|CriOS/i.test(ua) && !/Edg|OPR/i.test(ua);
