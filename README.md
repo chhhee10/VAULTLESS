@@ -7,7 +7,7 @@
 *your password is how you move*
 &nbsp;
 
-**[▶ Video Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
+**[▶ Video Demo](https://www.youtube.com/watch?v=ImOWwMM8VRI)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
 
 </div>
 
@@ -783,6 +783,6 @@ The scoring weights in `behaviouralEngine.js` can be adjusted if needed:
 
 ⬡ *your password is how you move* ⬡
 
-**[▶ Video Demo](https://youtu.be/H1GDiib1YAI?si=nnAmtng34_nXSFHa)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
+**[▶ Video Demo](https://www.youtube.com/watch?v=ImOWwMM8VRI)** &nbsp;·&nbsp; **[🌐 Visit Site](https://vaultless-sys.vercel.app/)** &nbsp;·&nbsp; **[🏆 Devfolio](https://devfolio.co/projects/vaultless-dea4)**
 
 </div>
