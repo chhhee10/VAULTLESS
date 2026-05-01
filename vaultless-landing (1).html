@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAULTLESS — Gesture DNA Authentication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00ff7f;
+    --green-dim: #00cc66;
+    --green-dark: #003a1e;
+    --green-glow: rgba(0,255,127,0.15);
+    --bg: #090d0f;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --text: #e8f5ee;
+    --muted: #4a6a55;
+    --border: rgba(0,255,127,0.12);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor {
+    position: fixed; width: 12px; height: 12px;
+    background: var(--green); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width .2s, height .2s, opacity .2s;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed; width: 36px; height: 36px;
+    border: 1px solid rgba(0,255,127,0.5); border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform .12s ease, width .2s, height .2s;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 48px;
+    background: linear-gradient(to bottom, rgba(9,13,15,0.95), transparent);
+    backdrop-filter: blur(0px);
+  }
+  .nav-logo {
+    font-family: var(--display);
+    font-weight: 800; font-size: 22px;
+    letter-spacing: -0.02em;
+    color: var(--green);
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none;
+  }
+  .nav-links {
+    display: flex; align-items: center; gap: 36px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted); text-decoration: none;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--green); }
+  .nav-cta {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--bg); background: var(--green);
+    padding: 10px 24px; letter-spacing: 0.08em;
+    text-transform: uppercase; text-decoration: none;
+    transition: opacity .2s;
+  }
+  .nav-cta:hover { opacity: 0.8; }
+
+  /* HEXAGON SVG */
+  .hex-icon {
+    display: inline-block; width: 28px; height: 28px;
+  }
+
+  /* ─── SECTION 1: HERO ─── */
+  #hero {
+    position: relative; height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .hero-bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,127,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,127,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  }
+  .hero-hex-bg {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+  .hero-counter {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.2em;
+    text-transform: uppercase;
+    position: absolute; top: 120px; left: 48px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hero-counter::before {
+    content: '';
+    display: block; width: 24px; height: 1px; background: var(--muted);
+  }
+  .hero-scroll-hint {
+    position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    animation: bob 2s ease-in-out infinite;
+  }
+  .scroll-line {
+    width: 1px; height: 48px;
+    background: linear-gradient(to bottom, var(--green), transparent);
+    animation: grow 2s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+  @keyframes grow { 0%,100%{transform:scaleY(1);transform-origin:top} 50%{transform:scaleY(0.6);transform-origin:top} }
+
+  .hero-kicker {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--green); letter-spacing: 0.25em; text-transform: uppercase;
+    margin-bottom: 28px; opacity: 0; animation: fadeUp .6s .2s forwards;
+  }
+  .hero-headline {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(52px, 8vw, 120px);
+    line-height: 0.9; letter-spacing: -0.04em;
+    text-align: center; position: relative;
+    opacity: 0; animation: fadeUp .8s .4s forwards;
+  }
+  .hero-headline .line-accent { color: var(--green); display: block; }
+  .hero-headline .line-ghost {
+    display: block;
+    -webkit-text-stroke: 1px rgba(0,255,127,0.25);
+    color: transparent;
+  }
+  .hero-sub {
+    margin-top: 36px; max-width: 520px; text-align: center;
+    font-size: 16px; font-weight: 300; color: rgba(232,245,238,0.55);
+    line-height: 1.7;
+    opacity: 0; animation: fadeUp .8s .6s forwards;
+  }
+  .hero-actions {
+    display: flex; gap: 16px; margin-top: 48px;
+    opacity: 0; animation: fadeUp .8s .8s forwards;
+  }
+  .btn-primary {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.1em;
+    text-transform: uppercase; text-decoration: none;
+    background: var(--green); color: var(--bg);
+    padding: 16px 40px; display: flex; align-items: center; gap: 10px;
+    transition: opacity .2s, transform .2s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-2px); }
+  .btn-outline {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.1em;
+    text-transform: uppercase; text-decoration: none; color: var(--green);
+    padding: 16px 40px; border: 1px solid rgba(0,255,127,0.3);
+    transition: background .2s, transform .2s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-outline:hover { background: var(--green-glow); transform: translateY(-2px); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+  /* MARQUEE STRIP */
+  .marquee-strip {
+    position: relative; overflow: hidden;
+    background: rgba(0,255,127,0.05);
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 18px 0;
+  }
+  .marquee-track {
+    display: flex; gap: 64px; width: max-content;
+    animation: marquee 24s linear infinite;
+  }
+  .marquee-item {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+    white-space: nowrap; display: flex; align-items: center; gap: 16px;
+  }
+  .marquee-dot { width: 4px; height: 4px; background: var(--green); border-radius: 50%; }
+  @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+  /* ─── SECTION 2: INTRO TEXT (kodeimmersive big scroll text style) ─── */
+  #intro {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 120px 48px;
+    position: relative;
+  }
+  .intro-inner { max-width: 1100px; width: 100%; }
+  .intro-label {
+    font-family: var(--mono); font-size: 11px; color: var(--green);
+    letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 64px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .intro-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .intro-bigtext {
+    font-family: var(--display); font-weight: 700;
+    font-size: clamp(28px, 4.5vw, 60px);
+    line-height: 1.15; letter-spacing: -0.02em;
+    color: rgba(232,245,238,0.85);
+  }
+  .intro-bigtext em {
+    font-style: normal; color: var(--green);
+  }
+  .intro-bigtext .dim { color: rgba(232,245,238,0.25); }
+
+  /* ─── SECTION 3: HOW IT WORKS (horizontal scroll-like steps) ─── */
+  #how {
+    padding: 140px 48px;
+    position: relative;
+  }
+  #how::before {
+    content: '';
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: 1px; background: var(--border);
+  }
+  .section-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 80px;
+  }
+  .section-title {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(36px, 5vw, 72px); letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .section-count {
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .steps-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--border);
+  }
+  .step {
+    background: var(--bg); padding: 48px 40px;
+    position: relative; overflow: hidden;
+    transition: background .3s;
+  }
+  .step::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--green-glow);
+    opacity: 0; transition: opacity .3s;
+  }
+  .step:hover::before { opacity: 1; }
+  .step-num {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.15em; margin-bottom: 32px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .step-icon {
+    width: 48px; height: 48px; margin-bottom: 24px;
+  }
+  .step-title {
+    font-family: var(--display); font-weight: 700; font-size: 22px;
+    line-height: 1.2; margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .step-desc {
+    font-size: 14px; font-weight: 300;
+    color: rgba(232,245,238,0.5); line-height: 1.7;
+  }
+  .step-tag {
+    margin-top: 28px; display: inline-block;
+    font-family: var(--mono); font-size: 10px; color: var(--green);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    border: 1px solid rgba(0,255,127,0.2); padding: 5px 12px;
+  }
+
+  /* ─── SECTION 4: STATS / NUMBERS (kodeimmersive 000 style) ─── */
+  #stats {
+    padding: 140px 48px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .stats-bg-hex {
+    position: absolute; right: -80px; top: 50%; transform: translateY(-50%);
+    opacity: 0.035; pointer-events: none;
+  }
+  .stats-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0;
+  }
+  .stat-item {
+    padding: 48px; border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-number {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(48px, 6vw, 88px);
+    line-height: 1; letter-spacing: -0.04em;
+    color: var(--green);
+    display: block;
+  }
+  .stat-label {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-top: 16px; display: block;
+  }
+
+  /* ─── SECTION 5: TECH DEEP DIVE ─── */
+  #tech {
+    padding: 140px 48px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
+    align-items: center;
+  }
+  .tech-visual {
+    position: relative; aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tech-ring {
+    position: absolute;
+    border-radius: 50%; border: 1px solid var(--border);
+    animation: spin 20s linear infinite;
+  }
+  .tech-ring:nth-child(2) { animation-duration: 32s; animation-direction: reverse; }
+  .tech-ring:nth-child(3) { animation-duration: 48s; }
+  .ring-1 { width: 100%; height: 100%; }
+  .ring-2 { width: 75%; height: 75%; }
+  .ring-3 { width: 50%; height: 50%; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .tech-center {
+    position: relative; z-index: 2;
+    width: 180px; height: 180px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tech-dot {
+    position: absolute;
+    width: 6px; height: 6px; background: var(--green);
+    border-radius: 50%; box-shadow: 0 0 8px var(--green);
+  }
+
+  .tech-content {}
+  .tech-label {
+    font-family: var(--mono); font-size: 11px; color: var(--green);
+    letter-spacing: 0.25em; text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .tech-title {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(32px, 4vw, 52px);
+    letter-spacing: -0.02em; line-height: 1.1;
+    margin-bottom: 32px;
+  }
+  .tech-body {
+    font-size: 15px; font-weight: 300;
+    color: rgba(232,245,238,0.55); line-height: 1.8;
+    margin-bottom: 40px;
+  }
+  .tech-bullets { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+  .tech-bullets li {
+    display: flex; align-items: flex-start; gap: 14px;
+    font-family: var(--mono); font-size: 13px;
+    color: rgba(232,245,238,0.7); line-height: 1.5;
+  }
+  .tech-bullets li::before {
+    content: '//'; color: var(--green); font-size: 11px; flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* ─── SECTION 6: THREE ACTS / DEMO ─── */
+  #demo {
+    padding: 140px 48px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+  }
+  .demo-header { margin-bottom: 80px; }
+  .acts-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 24px;
+  }
+  .act-card {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 48px 36px; position: relative; overflow: hidden;
+    transition: border-color .3s, transform .3s;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  }
+  .act-card:hover { border-color: rgba(0,255,127,0.4); transform: translateY(-4px); }
+  .act-num {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.15em; margin-bottom: 32px;
+  }
+  .act-title {
+    font-family: var(--display); font-weight: 700; font-size: 28px;
+    line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px;
+  }
+  .act-title span { color: var(--green); }
+  .act-body {
+    font-size: 13px; font-weight: 300;
+    color: rgba(232,245,238,0.5); line-height: 1.7; margin-bottom: 32px;
+  }
+  .act-status {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; padding: 6px 14px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .act-status.auth { border: 1px solid rgba(0,255,127,0.3); color: var(--green); }
+  .act-status.duress { border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; }
+  .act-status.rejected { border: 1px solid rgba(255,68,68,0.3); color: #ff4444; }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .auth .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .duress .status-dot { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+  .rejected .status-dot { background: #ff4444; box-shadow: 0 0 6px #ff4444; }
+
+  /* ─── SECTION 7: TECH STACK / CHAIN ─── */
+  #chain {
+    padding: 140px 48px;
+    border-top: 1px solid var(--border);
+  }
+  .chain-inner {
+    max-width: 900px; margin: 0 auto; text-align: center;
+  }
+  .chain-title {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(32px, 5vw, 64px); letter-spacing: -0.03em;
+    line-height: 1; margin-bottom: 24px;
+  }
+  .chain-sub {
+    font-size: 16px; font-weight: 300;
+    color: rgba(232,245,238,0.45); line-height: 1.7; margin-bottom: 80px;
+  }
+  .chain-logos {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; flex-wrap: wrap;
+  }
+  .chain-logo {
+    padding: 32px 48px; border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 13px;
+    color: var(--muted); letter-spacing: 0.1em;
+    transition: color .2s, border-color .2s, background .2s;
+    text-align: center; min-width: 140px;
+  }
+  .chain-logo:hover { color: var(--green); border-color: rgba(0,255,127,0.3); background: var(--green-glow); }
+  .chain-logo strong { display: block; font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+
+  /* ─── SECTION 8: BIG SCROLL QUOTE ─── */
+  #manifesto {
+    padding: 160px 48px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .manifesto-bg {
+    position: absolute; left: -100px; top: 50%; transform: translateY(-50%);
+    opacity: 0.025; pointer-events: none;
+  }
+  .manifesto-inner { max-width: 1000px; }
+  .manifesto-text {
+    font-family: var(--display); font-weight: 700;
+    font-size: clamp(24px, 3.5vw, 48px);
+    line-height: 1.3; letter-spacing: -0.02em;
+    color: rgba(232,245,238,0.7);
+  }
+  .manifesto-text em { font-style: normal; color: var(--green); }
+  .manifesto-source {
+    margin-top: 48px; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .manifesto-source::before { content: ''; width: 32px; height: 1px; background: var(--muted); }
+
+  /* ─── SECTION 9: CTA / FOOTER ─── */
+  #cta {
+    padding: 160px 48px 80px;
+    text-align: center; position: relative;
+    border-top: 1px solid var(--border);
+  }
+  .cta-label {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 32px;
+  }
+  .cta-title {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(40px, 8vw, 110px); letter-spacing: -0.04em;
+    line-height: 0.95; margin-bottom: 56px;
+  }
+  .cta-title .green { color: var(--green); }
+  .cta-actions { display: flex; gap: 16px; justify-content: center; margin-bottom: 120px; }
+
+  footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 40px 48px;
+    border-top: 1px solid var(--border);
+  }
+  .footer-logo {
+    font-family: var(--display); font-weight: 800; font-size: 18px;
+    color: var(--green); text-decoration: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .footer-info {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.1em; text-align: center;
+  }
+  .footer-links {
+    display: flex; gap: 24px; list-style: none;
+  }
+  .footer-links a {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase;
+    transition: color .2s;
+  }
+  .footer-links a:hover { color: var(--green); }
+
+  /* SCROLL REVEAL */
+  .reveal { opacity: 0; transform: translateY(32px); transition: opacity .8s ease, transform .8s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: .1s; }
+  .reveal-delay-2 { transition-delay: .2s; }
+  .reveal-delay-3 { transition-delay: .3s; }
+  .reveal-delay-4 { transition-delay: .4s; }
+
+  /* COUNTER ANIMATION */
+  .count-up { font-variant-numeric: tabular-nums; }
+
+  /* TYPING ANIMATION for hero phrase */
+  .typing-text {
+    font-family: var(--mono); font-size: 13px;
+    color: rgba(0,255,127,0.6);
+    background: rgba(0,255,127,0.05);
+    border: 1px solid rgba(0,255,127,0.1);
+    padding: 12px 20px; margin-top: 32px;
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 400; letter-spacing: 0.04em;
+    opacity: 0; animation: fadeUp .8s 1s forwards;
+  }
+  .typing-cursor {
+    width: 2px; height: 14px; background: var(--green);
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* PULSE ring around hex */
+  .pulse-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(0,255,127,0.3);
+    animation: pulse-expand 3s ease-out infinite;
+  }
+  @keyframes pulse-expand {
+    0% { width: 200px; height: 200px; opacity: 0.6; }
+    100% { width: 500px; height: 500px; opacity: 0; }
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .nav-links { display: none; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .acts-grid { grid-template-columns: 1fr; }
+    #tech { grid-template-columns: 1fr; }
+    .tech-visual { display: none; }
+    .chain-logos { gap: 0; }
+    .chain-logo { padding: 20px 28px; min-width: 110px; }
+    footer { flex-direction: column; gap: 24px; text-align: center; }
+    #hero, #intro, #how, #stats, #tech, #demo, #chain, #manifesto, #cta {
+      padding-left: 24px; padding-right: 24px;
+    }
+    .hero-counter { left: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <svg class="hex-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="14,2 25,8 25,20 14,26 3,20 3,8" fill="none" stroke="#00ff7f" stroke-width="1.5"/>
+      <polygon points="14,7 21,11 21,19 14,23 7,19 7,11" fill="rgba(0,255,127,0.1)" stroke="#00ff7f" stroke-width="0.8"/>
+      <circle cx="14" cy="15" r="2.5" fill="#00ff7f"/>
+    </svg>
+    VAULTLESS
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">Protocol</a></li>
+    <li><a href="#tech">Technology</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#chain">Stack</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Try Demo</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg-grid"></div>
+
+  <!-- Large background hex -->
+  <div class="hero-hex-bg">
+    <svg width="700" height="700" viewBox="0 0 700 700" fill="none">
+      <polygon points="350,50 622,200 622,500 350,650 78,500 78,200" fill="none" stroke="#00ff7f" stroke-width="1"/>
+      <polygon points="350,120 562,237 562,463 350,580 138,463 138,237" fill="none" stroke="#00ff7f" stroke-width="0.5"/>
+      <polygon points="350,190 502,274 502,426 350,510 198,426 198,274" fill="none" stroke="#00ff7f" stroke-width="0.5"/>
+    </svg>
+  </div>
+
+  <div class="pulse-ring" style="top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+
+  <div class="hero-counter">001 / IDENTITY</div>
+
+  <p class="hero-kicker">Gesture DNA Authentication</p>
+  <h1 class="hero-headline">
+    <span class="line-ghost">NO PASS</span>
+    <span class="line-accent">WORD.</span>
+    <span class="line-ghost">EVER.</span>
+  </h1>
+
+  <p class="hero-sub">
+    Your typing rhythm is your cryptographic key. It exists for milliseconds — never stored, never stolen.
+  </p>
+
+  <div class="typing-text">
+    <span id="typed-phrase">S</span><div class="typing-cursor"></div>
+  </div>
+
+  <div class="hero-actions">
+    <a href="#demo" class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      See It Live
+    </a>
+    <a href="#how" class="btn-outline">How It Works</a>
+  </div>
+
+  <div class="hero-scroll-hint">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-track" id="marquee-track"></div>
+</div>
+
+<!-- INTRO BIG TEXT -->
+<section id="intro">
+  <div class="intro-inner">
+    <div class="intro-label reveal">The Protocol</div>
+    <p class="intro-bigtext reveal reveal-delay-1">
+      <em>80% of breaches</em> involve compromised passwords.<span class="dim"> We eliminated the password entirely.</span>
+      The <em>micro-dynamics of how you type</em> — hold times, flight times, rhythm variance —
+      <span class="dim">become a 256-bit cryptographic key that reconstructs only when</span>
+      <em>you</em> are present.
+    </p>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-header">
+    <h2 class="section-title reveal">How It<br/>Works</h2>
+    <span class="section-count reveal">— 003 steps</span>
+  </div>
+
+  <div class="steps-grid">
+    <div class="step reveal">
+      <div class="step-num">01 — Capture</div>
+      <svg class="step-icon" viewBox="0 0 48 48" fill="none">
+        <polygon points="24,4 44,15 44,33 24,44 4,33 4,15" stroke="#00ff7f" stroke-width="1" fill="rgba(0,255,127,0.05)"/>
+        <rect x="17" y="20" width="3" height="10" fill="#00ff7f" rx="1"/>
+        <rect x="22" y="16" width="3" height="14" fill="#00ff7f" rx="1" opacity=".6"/>
+        <rect x="27" y="18" width="3" height="12" fill="#00ff7f" rx="1" opacity=".4"/>
+      </svg>
+      <h3 class="step-title">Keystroke DNA Sampling</h3>
+      <p class="step-desc">10 typing samples of your enrollment phrase capture hold times, flight times, and rhythm variance into a Float32[64] biometric vector.</p>
+      <span class="step-tag">behaviouralEngine.ts</span>
+    </div>
+
+    <div class="step reveal reveal-delay-1">
+      <div class="step-num">02 — Extract</div>
+      <svg class="step-icon" viewBox="0 0 48 48" fill="none">
+        <polygon points="24,4 44,15 44,33 24,44 4,33 4,15" stroke="#00ff7f" stroke-width="1" fill="rgba(0,255,127,0.05)"/>
+        <circle cx="24" cy="24" r="8" stroke="#00ff7f" stroke-width="1" stroke-dasharray="3 2"/>
+        <path d="M24 16 L24 32 M16 24 L32 24" stroke="#00ff7f" stroke-width="0.8"/>
+        <circle cx="24" cy="24" r="2" fill="#00ff7f"/>
+      </svg>
+      <h3 class="step-title">Fuzzy Key Extraction</h3>
+      <p class="step-desc">BCH error-correcting codes + HKDF-SHA256 convert your vector into a stable 256-bit cryptographic key. The sketch is stored on Solana — the key never is.</p>
+      <span class="step-tag">fuzzyExtractor.ts</span>
+    </div>
+
+    <div class="step reveal reveal-delay-2">
+      <div class="step-num">03 — Authenticate</div>
+      <svg class="step-icon" viewBox="0 0 48 48" fill="none">
+        <polygon points="24,4 44,15 44,33 24,44 4,33 4,15" stroke="#00ff7f" stroke-width="1" fill="rgba(0,255,127,0.05)"/>
+        <path d="M17 24 L22 29 L31 19" stroke="#00ff7f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3 class="step-title">On-Chain Verification</h3>
+      <p class="step-desc">One typing sample reconstructs the key. Commitment verified. Nullifier burned on Solana devnet. Your wallet opens. The key dissolves in milliseconds.</p>
+      <span class="step-tag">authFlow.ts + solana.ts</span>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="stats-bg-hex">
+    <svg width="600" height="600" viewBox="0 0 600 600" fill="none">
+      <polygon points="300,40 532,170 532,430 300,560 68,430 68,170" stroke="#00ff7f" stroke-width="1"/>
+      <polygon points="300,100 488,210 488,390 300,500 112,390 112,210" stroke="#00ff7f" stroke-width="0.5"/>
+    </svg>
+  </div>
+  <div class="stats-row">
+    <div class="stat-item reveal">
+      <span class="stat-number count-up" data-target="98" data-suffix="%">0%</span>
+      <span class="stat-label">Auth Accuracy (TypeNet 2022)</span>
+    </div>
+    <div class="stat-item reveal reveal-delay-1">
+      <span class="stat-number count-up" data-target="256" data-suffix="bit">0bit</span>
+      <span class="stat-label">Cryptographic Key Strength</span>
+    </div>
+    <div class="stat-item reveal reveal-delay-2">
+      <span class="stat-number count-up" data-target="80" data-suffix="%">0%</span>
+      <span class="stat-label">Breaches Via Stolen Passwords</span>
+    </div>
+    <div class="stat-item reveal reveal-delay-3">
+      <span class="stat-number count-up" data-target="0" data-suffix="">0</span>
+      <span class="stat-label">Passwords Stored. Ever.</span>
+    </div>
+  </div>
+</section>
+
+<!-- TECH DEEP DIVE -->
+<section id="tech">
+  <div class="tech-visual">
+    <div class="tech-ring ring-1"></div>
+    <div class="tech-ring ring-2"></div>
+    <div class="tech-ring ring-3"></div>
+    <!-- orbit dots -->
+    <div class="tech-dot" style="top:2%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="tech-dot" style="top:50%;right:2%;transform:translate(50%,-50%)"></div>
+    <div class="tech-dot" style="bottom:2%;left:50%;transform:translate(-50%,50%)"></div>
+    <div class="tech-center">
+      <svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+        <polygon points="90,16 158,54 158,126 90,164 22,126 22,54" fill="rgba(0,255,127,0.07)" stroke="#00ff7f" stroke-width="1.5"/>
+        <polygon points="90,38 140,67 140,113 90,142 40,113 40,67" fill="rgba(0,255,127,0.05)" stroke="#00ff7f" stroke-width="0.8"/>
+        <circle cx="90" cy="90" r="18" fill="rgba(0,255,127,0.15)" stroke="#00ff7f" stroke-width="1"/>
+        <circle cx="90" cy="90" r="6" fill="#00ff7f"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tech-content">
+    <p class="tech-label reveal">Under the Hood</p>
+    <h2 class="tech-title reveal">Biometrics meet<br/>Cryptography</h2>
+    <p class="tech-body reveal">
+      The Gesture DNA system applies Fuzzy Extractor theory (Dodis, Reyzin, Smith — EUROCRYPT 2004) to keystroke biometrics. Your behavioral pattern is error-corrected by BCH codes and converted to a reproducible key by HKDF-SHA256.
+    </p>
+    <ul class="tech-bullets reveal">
+      <li>Pearson correlation on hold/flight Z-scores — 65% scoring weight</li>
+      <li>BCH error-correction tolerates natural variation across sessions</li>
+      <li>Stress detection: variance > 2.5× enrolled triggers duress mode</li>
+      <li>AES-256-GCM encrypts the session secret at rest in Chrome storage</li>
+      <li>Burned nullifiers prevent replay attacks on Solana devnet</li>
+    </ul>
+  </div>
+</section>
+
+<!-- DEMO ACTS -->
+<section id="demo">
+  <div class="demo-header section-header">
+    <h2 class="section-title reveal">Three Acts.<br/>One Phrase.</h2>
+    <span class="section-count reveal">— 005 demo</span>
+  </div>
+
+  <div class="acts-grid">
+    <div class="act-card reveal">
+      <div class="act-num">ACT 01 / 45s</div>
+      <h3 class="act-title">Enroll<br/><span>Your Rhythm</span></h3>
+      <p class="act-body">Type "Secure my account" 10 times. The BCH syndrome stores to Solana. The 256-bit key that unlocks this wallet exists nowhere. It lives for milliseconds only when you type.</p>
+      <span class="act-status auth"><span class="status-dot"></span>Enrolled On-Chain</span>
+    </div>
+    <div class="act-card reveal reveal-delay-1">
+      <div class="act-num">ACT 02 / 45s</div>
+      <h3 class="act-title">Auth<br/><span>Yourself</span></h3>
+      <p class="act-body">Type once. Score ring animates to 0.87. Anchor tx fires. Nullifier burned. Wallet opens with live Solana balance. Same person — same key reconstructed from rhythm alone.</p>
+      <span class="act-status auth"><span class="status-dot"></span>Score 0.87 — Authenticated</span>
+    </div>
+    <div class="act-card reveal reveal-delay-2">
+      <div class="act-num">ACT 03 / 60s</div>
+      <h3 class="act-title">Trigger<br/><span>Duress</span></h3>
+      <p class="act-body">Type stressed — fast, erratic. Score lands in duress band. Attacker sees a normal session. Real wallet is flagged on Solana. Owner receives EmailJS alert in 5 seconds.</p>
+      <span class="act-status duress"><span class="status-dot"></span>Duress — Ghost Wallet Active</span>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="chain">
+  <div class="chain-inner">
+    <h2 class="chain-title reveal">Built on the<br/>right primitives</h2>
+    <p class="chain-sub reveal">Open standards. Zero trust. Every component auditable.</p>
+    <div class="chain-logos reveal">
+      <div class="chain-logo"><strong>Solana</strong>devnet / anchor</div>
+      <div class="chain-logo"><strong>Chrome MV3</strong>extension</div>
+      <div class="chain-logo"><strong>AES-256</strong>GCM encrypt</div>
+      <div class="chain-logo"><strong>BCH Codes</strong>error correct</div>
+      <div class="chain-logo"><strong>HKDF</strong>SHA-256</div>
+      <div class="chain-logo"><strong>EmailJS</strong>duress alert</div>
+    </div>
+  </div>
+</section>
+
+<!-- MANIFESTO -->
+<section id="manifesto">
+  <div class="manifesto-bg">
+    <svg width="800" height="800" viewBox="0 0 800 800" fill="none">
+      <polygon points="400,56 712,228 712,572 400,744 88,572 88,228" stroke="#00ff7f" stroke-width="1"/>
+      <polygon points="400,140 640,278 640,522 400,660 160,522 160,278" stroke="#00ff7f" stroke-width="0.5"/>
+    </svg>
+  </div>
+  <div class="manifesto-inner">
+    <blockquote class="manifesto-text reveal">
+      "The attacker sees <em>a normal session.</em> The real wallet is flagged on Solana.
+      The owner has been alerted.
+      <em>Rubber hose cryptanalysis meets its match.</em>"
+    </blockquote>
+    <div class="manifesto-source reveal">VAULTLESS DEMO SCRIPT — ACT III</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <p class="cta-label reveal">— Get Started</p>
+  <h2 class="cta-title reveal">
+    Type.<br/>
+    <span class="green">Unlock.</span><br/>
+    Own.
+  </h2>
+  <div class="cta-actions reveal">
+    <a href="#" class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      Install Extension
+    </a>
+    <a href="#" class="btn-outline">View on GitHub</a>
+  </div>
+
+  <footer>
+    <a href="#" class="footer-logo">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="none" stroke="#00ff7f" stroke-width="1.2"/>
+        <circle cx="10" cy="10" r="2.5" fill="#00ff7f"/>
+      </svg>
+      VAULTLESS
+    </a>
+    <div class="footer-info">
+      © 2026 VAULTLESS — Gesture DNA Auth &nbsp;·&nbsp; Solana Devnet &nbsp;·&nbsp; Hackathon Build
+    </div>
+    <ul class="footer-links">
+      <li><a href="#">GitHub</a></li>
+      <li><a href="#">Devfolio</a></li>
+      <li><a href="#">Explorer</a></li>
+    </ul>
+  </footer>
+</section>
+
+<script>
+  // CURSOR
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  function animCursor() {
+    cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+    rx += (mx - rx) * 0.15; ry += (my - ry) * 0.15;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
+
+  // SCROLL REVEAL
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  reveals.forEach(el => obs.observe(el));
+
+  // COUNT UP
+  function countUp(el) {
+    const target = +el.dataset.target;
+    const suffix = el.dataset.suffix || '';
+    const duration = 1600;
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(ease * target) + suffix;
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  const countObs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { countUp(e.target); countObs.unobserve(e.target); } });
+  }, { threshold: 0.5 });
+  document.querySelectorAll('.count-up').forEach(el => countObs.observe(el));
+
+  // MARQUEE
+  const items = ['Gesture DNA', 'Zero Passwords', 'Fuzzy Extractors', 'Solana On-Chain', 'AES-256-GCM', 'BCH Error Codes', 'Keystroke Biometrics', 'Behavioral Auth', 'Nullifier Burn', 'Replay Proof', 'Duress Detection', 'Chrome Extension'];
+  const track = document.getElementById('marquee-track');
+  const allItems = [...items, ...items];
+  allItems.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'marquee-item';
+    div.innerHTML = `<span class="marquee-dot"></span>${item}`;
+    track.appendChild(div);
+  });
+
+  // TYPING ANIMATION
+  const phrase = 'Secure my account_';
+  const typed = document.getElementById('typed-phrase');
+  let ti = 0;
+  setTimeout(() => {
+    const typer = setInterval(() => {
+      if (ti < phrase.length) { typed.textContent = phrase.slice(0, ++ti); }
+      else clearInterval(typer);
+    }, 80);
+  }, 1200);
+
+  // Pulse ring repeat
+  const pr = document.querySelector('.pulse-ring');
+  pr.addEventListener('animationiteration', () => {});
+</script>
+</body>
+</html>
