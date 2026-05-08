@@ -13,9 +13,10 @@ export async function sendDuressAlert({ address, txHash, timestamp, recoveryEmai
       return { ok: false, error: cfgError };
     }
 
-    // Dynamically load EmailJS
+    // Dynamically load EmailJS and initialize with the public key
     const emailjs = await import('@emailjs/browser');
-    
+    emailjs.init(PUBLIC_KEY);
+
     const solanaLink = `https://explorer.solana.com/tx/${txHash}?cluster=devnet`;
     const toEmail = (recoveryEmail || '').trim() || ALERT_EMAIL;
 
@@ -31,8 +32,7 @@ export async function sendDuressAlert({ address, txHash, timestamp, recoveryEmai
     await emailjs.send(
       SERVICE_ID,
       TEMPLATE_ID,
-      templateParams,
-      PUBLIC_KEY
+      templateParams
     );
 
     console.log('[VAULTLESS] Duress alert sent successfully');
@@ -45,7 +45,7 @@ export async function sendDuressAlert({ address, txHash, timestamp, recoveryEmai
 
 function validateEmailConfig(recoveryEmail) {
   if (isPlaceholder(SERVICE_ID) || isPlaceholder(TEMPLATE_ID) || isPlaceholder(PUBLIC_KEY)) {
-    return 'Email alerts are not configured. Set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY in .env.';
+    return 'Email alerts are not configured. Set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY in .env and restart the dev server.';
   }
   const toEmail = (recoveryEmail || '').trim() || ALERT_EMAIL;
   if (!isValidEmail(toEmail)) {
@@ -67,5 +67,12 @@ function isValidEmail(email) {
 function extractEmailError(err) {
   if (!err) return 'Unknown EmailJS error.';
   if (typeof err === 'string') return err;
-  return err.text || err.message || 'Unknown EmailJS error.';
+  if (err.text) return err.text;
+  if (err.message) return err.message;
+  if (err.status) return `EmailJS returned status ${err.status}`;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return 'Unknown EmailJS error.';
+  }
 }

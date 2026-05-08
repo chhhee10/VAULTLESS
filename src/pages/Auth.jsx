@@ -242,6 +242,10 @@ export default function Auth() {
           const fakeTx = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
           addSolanaLink('DuressActivated', fakeTx);
           const alertResult = await sendDuressAlert({ address: walletAddress || 'DEMO', txHash: fakeTx, timestamp: Date.now(), recoveryEmail });
+          if (!secretKey) {
+            setSecretKey('demo-ghost-' + fakeTx.slice(0, 16));
+          }
+          setSessionActive(true);
           if (!alertResult.ok) {
             setStatusMsg(`Duress logged, but email alert failed: ${alertResult.error}`);
           } else {
@@ -253,6 +257,7 @@ export default function Auth() {
         const txResponse = await triggerDuressOnChain();
         addSolanaLink('DuressActivated', txResponse.hash);
         const alertResult = await sendDuressAlert({ address: walletAddress, txHash: txResponse.hash, timestamp: Date.now(), recoveryEmail });
+        setSessionActive(true);
         if (!alertResult.ok) {
           setStatusMsg(`Duress logged, but email alert failed: ${alertResult.error}`);
         } else {
