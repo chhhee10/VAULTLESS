@@ -1,43 +1,49 @@
-# Logs
-logs
+# --- System / OS ---
+.DS_Store
+Thumbs.db
+
+# --- Dependencies ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- Environment ---
+.env
+.env.local
+.env.*.local
+
+# --- Logs ---
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# Dependencies
-node_modules
-dist
-dist-ssr
-*.local
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Editor directories and files
-.vscode/*
+# --- IDEs ---
+.vscode/
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Solana / Anchor Smart Contract Artifacts
-vaultless_program/target/
-vaultless_program/test-ledger/
-vaultless_program/.anchor/
+# --- Solana / Anchor ---
+target/
+**/target/
+test-ledger/
+**/.anchor/
+**/*.so
+**/*.json
+!**/idl/*.json
+!**/package.json
 
-# Temp scripts created during session
-test_fuzzy.mjs
-fix_phases.cjs
-fix_phases.js
+# --- Project Specific ---
+email_template.html
 CONTEXT.md
+*.mjs
+*.cjs
+scratch/
+temp/

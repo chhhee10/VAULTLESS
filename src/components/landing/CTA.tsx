@@ -5,7 +5,7 @@ import { useVaultless } from '../../lib/VaultlessContext';
 
 const CTA = () => {
   const navigate = useNavigate();
-  const { setDemoMode, clearEnrollment } = useVaultless();
+  const { setDemoMode, clearEnrollment, isEnrolled } = useVaultless();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -53,12 +53,16 @@ const CTA = () => {
               whileTap={{ scale: 0.95 }}
               className="rounded-full bg-[#00FF4D] px-10 py-4 font-mono text-xs font-bold uppercase tracking-widest text-black shadow-[0_18px_45px_rgba(0,255,77,0.24)] transition-all duration-300 hover:shadow-[0_22px_55px_rgba(0,255,77,0.36)]"
               onClick={() => {
-                clearEnrollment();
-                setDemoMode(false);
-                navigate('/enroll');
+                if (isEnrolled) {
+                  navigate('/gmail');
+                } else {
+                  clearEnrollment();
+                  setDemoMode(false);
+                  navigate('/enroll');
+                }
               }}
             >
-              SIGN UP
+              {isEnrolled ? "SIGN IN" : "SIGN UP"}
             </motion.button>
           </div>
         </motion.div>

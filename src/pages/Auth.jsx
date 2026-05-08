@@ -13,7 +13,7 @@ const PHRASE = 'Secure my account';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey, setSecretKey, setIsDuressMode, setLastAuthScore, addSolanaLink, demoMode, setWalletAddress } = useVaultless();
+  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey, setSecretKey, setIsDuressMode, setLastAuthScore, addSolanaLink, demoMode, setWalletAddress, setSessionActive } = useVaultless();
   const { isMobile, width: viewportWidth } = useViewport();
   const graphWidth = isMobile ? viewportWidth - 60 : 440;
   const mobileLikeDevice = isMobileBrowser();
@@ -220,11 +220,13 @@ export default function Auth() {
           if (!secretKey) {
             setSecretKey('demo-session-' + fakeTx.slice(0, 16));
           }
+          setSessionActive(true);
           setStatusMsg('Authenticated. Redirecting...');
           setTimeout(() => navigate('/dashboard'), 2000);
           return;
         }
         const txResponse = await authenticateOnChain();
+        setSessionActive(true);
         addSolanaLink('AuthSuccess', txResponse.hash);
         setStatusMsg('Identity verified on-chain. Redirecting...');
         setTimeout(() => navigate('/dashboard'), 2000);

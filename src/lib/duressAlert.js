@@ -13,27 +13,25 @@ export async function sendDuressAlert({ address, txHash, timestamp, recoveryEmai
       return { ok: false, error: cfgError };
     }
 
-    // Dynamically load EmailJS to avoid bundle bloat
+    // Dynamically load EmailJS
     const emailjs = await import('@emailjs/browser');
-    const sendFn = emailjs.send || emailjs.default?.send;
-    if (typeof sendFn !== 'function') {
-      return { ok: false, error: 'EmailJS SDK not initialized correctly.' };
-    }
-
+    
     const solanaLink = `https://explorer.solana.com/tx/${txHash}?cluster=devnet`;
     const toEmail = (recoveryEmail || '').trim() || ALERT_EMAIL;
 
-    await sendFn(
+    const templateParams = {
+      to_email: toEmail,
+      subject: '🚨 VAULTLESS DURESS ALERT',
+      wallet_address: address,
+      timestamp: new Date(timestamp).toLocaleString(),
+      solana_link: solanaLink,
+      message: `DURESS PROTOCOL ACTIVATED\n\nWallet: ${address}\nTime: ${new Date(timestamp).toLocaleString()}\nSolana Explorer: ${solanaLink}\n\nThe account has been locked. A ghost session was loaded for the attacker.`,
+    };
+
+    await emailjs.send(
       SERVICE_ID,
       TEMPLATE_ID,
-      {
-        to_email: toEmail,
-        subject: '🚨 VAULTLESS DURESS ALERT',
-        wallet_address: address,
-        timestamp: new Date(timestamp).toLocaleString(),
-        solana_link: solanaLink,
-        message: `DURESS PROTOCOL ACTIVATED\n\nWallet: ${address}\nTime: ${new Date(timestamp).toLocaleString()}\nSolana Explorer: ${solanaLink}\n\nThe account has been locked. A ghost session was loaded for the attacker.`,
-      },
+      templateParams,
       PUBLIC_KEY
     );
 

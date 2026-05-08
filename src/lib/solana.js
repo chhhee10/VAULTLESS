@@ -1,98 +1,75 @@
-import { Connection, PublicKey, clusterApiUrl, Keypair, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  LAMPORTS_PER_SOL,
+  clusterApiUrl,
+} from '@solana/web3.js';
 
-// ── Paste your deployed Solana Program ID here ──
+// ── Program ID (deployed on Devnet) ──
 export const PROGRAM_ID = new PublicKey('32Ve1hyCBwPDg2Br2v16aV9hq5xAkquE5gYif9v4akb1');
-
-// We use the Devnet for the Hackathon
 export const NETWORK = clusterApiUrl('devnet');
 
-// The IDL defines the interface of our Solana program.
-// In a real Anchor project, you import this from the generated target/idl folder.
-const IDL = {
-  "version": "0.1.0",
-  "name": "vaultless",
-  "instructions": [
-    {
-      "name": "initializeIdentity",
-      "accounts": [
-        { "name": "identity", "isMut": true, "isSigner": false },
-        { "name": "user", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
-      ],
-      "args": [
-        { "name": "helperData", "type": "string" }
-      ]
-    },
-    {
-      "name": "triggerDuress",
-      "accounts": [
-        { "name": "identity", "isMut": true, "isSigner": false },
-        { "name": "user", "isMut": false, "isSigner": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "authenticate",
-      "accounts": [
-        { "name": "identity", "isMut": true, "isSigner": false },
-        { "name": "user", "isMut": false, "isSigner": true }
-      ],
-      "args": []
-    }
-  ],
-  "accounts": [
-    {
-      "name": "Identity",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "owner", "type": "publicKey" },
-          { "name": "helperData", "type": "string" },
-          { "name": "enrolledAt", "type": "i64" },
-          { "name": "lastAuthAt", "type": "i64" },
-          { "name": "isLocked", "type": "bool" }
-        ]
-      }
-    }
-  ],
-  "events": [
-    {
-      "name": "DuressEvent",
-      "fields": [
-        { "name": "owner", "type": "publicKey", "index": false },
-        { "name": "timestamp", "type": "i64", "index": false }
-      ]
-    }
-  ]
-};
+// ── Anchor discriminators ──
+// These are the first 8 bytes of sha256("global:<instruction_name>")
+// Pre-computed for our 4 instructions:
+function anchorDiscriminator(name) {
+  // We use a simple hash approach compatible with the browser
+  // Anchor uses: sha256("global:<snake_case_name>")[0..8]
+  const DISCRIMINATORS = {
+    'initialize_identity': [174,116,47,150,189,57,60,186],
+    'update_identity':     [130,54,88,104,222,124,238,252],
+    'trigger_duress':      [222,199,162,21,107,111,119,157],
+    'authenticate':        [172,100,46,57,235,170,237,96],
+  };
+  return new Uint8Array(DISCRIMINATORS[name]);
+}
 
+// ── Borsh serialization helpers ──
+function serializeString(str) {
+  const encoded = new TextEncoder().encode(str);
+  const buf = new Uint8Array(4 + encoded.length);
+  const view = new DataView(buf.buffer);
+  view.setUint32(0, encoded.length, true); // little-endian
+  buf.set(encoded, 4);
+  return buf;
+}
+
+function concatBytes(...arrays) {
+  const totalLen = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+// ── Phantom wallet provider ──
 function getSolanaProvider() {
   if (typeof window === 'undefined') return null;
-  
-  if ("solana" in window) {
+  if ('solana' in window) {
     const provider = window.solana;
-    if (provider.isPhantom) {
-      return provider;
-    }
+    if (provider.isPhantom) return provider;
   }
-  
-  // You might want to handle Solflare or generic wallets here
-  return window.solana; 
+  return window.solana;
 }
 
 export async function connectWallet() {
   const provider = getSolanaProvider();
-
   if (provider) {
     try {
       const resp = await provider.connect();
       return resp.publicKey;
     } catch (err) {
-      throw new Error("User rejected the request.");
+      throw new Error('User rejected the request.');
     }
   } else {
-    throw new Error("Solana wallet (Phantom) not found. Please install the Phantom extension.");
+    throw new Error('Solana wallet (Phantom) not found. Please install the Phantom extension.');
   }
 }
 
@@ -117,110 +94,141 @@ export async function getActiveWalletAddress() {
   if (provider && provider.isConnected && provider.publicKey) {
     return provider.publicKey.toString();
   }
-  // Not connected yet — trigger connect popup
   return connectPhantom();
 }
 
-export async function getAnchorProgram() {
-  const provider = getSolanaProvider();
-  if (!provider) throw new Error("No wallet provider found");
-
-  const connection = new Connection(NETWORK, 'processed');
-  const anchorProvider = new AnchorProvider(connection, provider, {
-    preflightCommitment: 'processed',
-  });
-
-  return new Program(IDL, PROGRAM_ID, anchorProvider);
-}
-
-// ── Identity PDAs ───────────────────────────────────────────────────────────
-export async function getIdentityPDA(userPublicKey) {
-  const [pda, bump] = await PublicKey.findProgramAddress(
-    [new TextEncoder().encode("identity"), userPublicKey.toBuffer()],
+// ── Identity PDA ──
+export function getIdentityPDA(userPublicKeyStr) {
+  const userPubkey = new PublicKey(userPublicKeyStr);
+  const [pda, bump] = PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode('identity'), userPubkey.toBuffer()],
     PROGRAM_ID
   );
   return { pda, bump };
 }
 
-export async function fetchHelperData(userPublicKeyStr) {
-  try {
-    const program = await getAnchorProgram();
-    const userPubkey = new PublicKey(userPublicKeyStr);
-    const { pda } = await getIdentityPDA(userPubkey);
-    
-    const account = await program.account.identity.fetch(pda);
-    return account.helperData;
-  } catch (err) {
-    console.error("Failed to fetch helper data. User might not be enrolled.", err);
-    return null;
+// ── Helper: send a transaction via Phantom ──
+async function sendTransaction(instruction) {
+  const provider = getSolanaProvider();
+  if (!provider || !provider.publicKey) {
+    throw new Error('Wallet not connected. Please connect Phantom first.');
   }
+
+  const connection = new Connection(NETWORK, 'confirmed');
+  const transaction = new Transaction().add(instruction);
+  transaction.feePayer = provider.publicKey;
+  transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  const signed = await provider.signTransaction(transaction);
+  const signature = await connection.sendRawTransaction(signed.serialize());
+  await connection.confirmTransaction(signature, 'confirmed');
+  return signature;
 }
 
-// ── Actual Program Transactions ─────────────────────────────────────────────
+// ── Program Instructions ──
 
 export async function registerIdentityOnChain(helperData) {
-  const program = await getAnchorProgram();
   const provider = getSolanaProvider();
-  const userPubkey = new PublicKey(provider.publicKey.toString());
-  const { pda } = await getIdentityPDA(userPubkey);
-  
+  if (!provider || !provider.publicKey) {
+    throw new Error('Wallet not connected. Please connect Phantom first.');
+  }
+
+  const ownerPubkey = provider.publicKey;
+  const { pda } = getIdentityPDA(ownerPubkey.toString());
+
+  // Try update first (in case already enrolled)
   try {
-    // Attempt to update first in case they are already enrolled
-    const tx = await program.methods.updateIdentity(helperData)
-      .accounts({
-        identity: pda,
-        user: userPubkey,
-      })
-      .rpc();
-    return { hash: tx };
+    const updateData = concatBytes(
+      anchorDiscriminator('update_identity'),
+      serializeString(helperData),
+    );
+
+    const updateIx = new TransactionInstruction({
+      keys: [
+        { pubkey: pda, isSigner: false, isWritable: true },
+        { pubkey: ownerPubkey, isSigner: true, isWritable: false },
+      ],
+      programId: PROGRAM_ID,
+      data: updateData,
+    });
+
+    const sig = await sendTransaction(updateIx);
+    return { hash: sig };
   } catch (err) {
-    // If account doesn't exist, initialize it
-    const tx = await program.methods.initializeIdentity(helperData)
-      .accounts({
-        identity: pda,
-        user: userPubkey,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .rpc();
-    return { hash: tx };
+    // Account doesn't exist — initialize it
+    const initData = concatBytes(
+      anchorDiscriminator('initialize_identity'),
+      serializeString(helperData),
+    );
+
+    const initIx = new TransactionInstruction({
+      keys: [
+        { pubkey: pda, isSigner: false, isWritable: true },
+        { pubkey: ownerPubkey, isSigner: true, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId: PROGRAM_ID,
+      data: initData,
+    });
+
+    const sig = await sendTransaction(initIx);
+    return { hash: sig };
   }
 }
 
 export async function authenticateOnChain() {
-  const program = await getAnchorProgram();
   const provider = getSolanaProvider();
-  const userPubkey = new PublicKey(provider.publicKey.toString());
-  const { pda } = await getIdentityPDA(userPubkey);
-  
-  const tx = await program.methods.authenticate()
-    .accounts({
-      identity: pda,
-      user: userPubkey,
-    })
-    .rpc();
-  return { hash: tx };
+  if (!provider || !provider.publicKey) {
+    throw new Error('Wallet not connected.');
+  }
+
+  const ownerPubkey = provider.publicKey;
+  const { pda } = getIdentityPDA(ownerPubkey.toString());
+
+  const data = anchorDiscriminator('authenticate');
+
+  const ix = new TransactionInstruction({
+    keys: [
+      { pubkey: pda, isSigner: false, isWritable: true },
+      { pubkey: ownerPubkey, isSigner: true, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  });
+
+  const sig = await sendTransaction(ix);
+  return { hash: sig };
 }
 
 export async function triggerDuressOnChain() {
-  const program = await getAnchorProgram();
   const provider = getSolanaProvider();
-  const userPubkey = new PublicKey(provider.publicKey.toString());
-  const { pda } = await getIdentityPDA(userPubkey);
-  
-  const tx = await program.methods.triggerDuress()
-    .accounts({
-      identity: pda,
-      user: userPubkey,
-    })
-    .rpc();
-  return { hash: tx };
+  if (!provider || !provider.publicKey) {
+    throw new Error('Wallet not connected.');
+  }
+
+  const ownerPubkey = provider.publicKey;
+  const { pda } = getIdentityPDA(ownerPubkey.toString());
+
+  const data = anchorDiscriminator('trigger_duress');
+
+  const ix = new TransactionInstruction({
+    keys: [
+      { pubkey: pda, isSigner: false, isWritable: true },
+      { pubkey: ownerPubkey, isSigner: true, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  });
+
+  const sig = await sendTransaction(ix);
+  return { hash: sig };
 }
 
-// ── Wallet Utilities ────────────────────────────────────────────────────────
+// ── Wallet Utilities ──
 
 export function getWalletFromSecretKey(hexSecretKey) {
   let hex = hexSecretKey.startsWith('0x') ? hexSecretKey.slice(2) : hexSecretKey;
-  if (hex.length !== 64) throw new Error("Invalid secret key length");
+  if (hex.length !== 64) throw new Error('Invalid secret key length');
   const seed = new Uint8Array(32);
   for (let i = 0; i < 32; i++) {
     seed[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
@@ -246,7 +254,7 @@ export async function requestAirdrop(publicKeyStr) {
 export async function sendSol(senderKeypair, recipientAddressStr, amountSol) {
   const connection = new Connection(NETWORK, 'confirmed');
   const recipient = new PublicKey(recipientAddressStr);
-  
+
   const transaction = new Transaction().add(
     SystemProgram.transfer({
       fromPubkey: senderKeypair.publicKey,
@@ -254,16 +262,18 @@ export async function sendSol(senderKeypair, recipientAddressStr, amountSol) {
       lamports: amountSol * LAMPORTS_PER_SOL,
     })
   );
-  
-  const signature = await web3.sendAndConfirmTransaction(
-    connection,
-    transaction,
-    [senderKeypair]
-  );
+
+  const { blockhash } = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = senderKeypair.publicKey;
+  transaction.sign(senderKeypair);
+
+  const signature = await connection.sendRawTransaction(transaction.serialize());
+  await connection.confirmTransaction(signature, 'confirmed');
   return signature;
 }
 
-// ── Demo mode stubs (used when VITE_DEMO_MODE=true) ──────────────────────────
+// ── Demo mode stubs ──
 export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export async function demoRegister() {

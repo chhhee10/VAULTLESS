@@ -83,6 +83,7 @@ export function VaultlessProvider({ children }) {
 
   const [isDuressMode,  setIsDuressMode]  = useState(false);
   const [lastAuthScore, setLastAuthScore] = useState(null);
+  const [sessionActive, setSessionActive] = useState(false);
   const [etherscanLinks, setEtherscanLinks] = useState([]);
   const [demoMode, setDemoModeRaw] = useState(loadDemoMode);
 
@@ -150,6 +151,7 @@ export function VaultlessProvider({ children }) {
       helperData,          setHelperData,
       secretKey,           setSecretKey,
       isDuressMode,        setIsDuressMode,
+      sessionActive,       setSessionActive,
       lastAuthScore,       setLastAuthScore,
       solanaLinks: etherscanLinks, addSolanaLink,
       demoMode,            setDemoMode,

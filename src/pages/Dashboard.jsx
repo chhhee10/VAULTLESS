@@ -9,7 +9,7 @@ const PHRASE = 'Secure my account';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode } = useVaultless();
+  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode, sessionActive, clearEnrollment } = useVaultless();
   
   const [bioWallet, setBioWallet] = useState(null);
   const [balance, setBalance] = useState(0);
@@ -29,32 +29,30 @@ export default function Dashboard() {
   const DEMO_WALLET_ADDRESS = 'DEMO1111111111111111111111111111111111111111';
 
   useEffect(() => {
-    if (!secretKey) {
+    // Session guard: If we haven't just authenticated, go back to portal
+    if (!sessionActive) {
       navigate('/gmail');
       return;
     }
+
+    // In demo mode, use a stub wallet
     if (demoMode) {
+      if (!secretKey) {
+        navigate('/gmail');
+        return;
+      }
       setBioWallet({ publicKey: { toString: () => DEMO_WALLET_ADDRESS } });
       setBalance(0);
       return;
     }
-    // Live mode: walletAddress is the Phantom public key set during enrollment.
-    // Use it directly for balance — no need to reconstruct the keypair just to read balance.
+    // Live mode
     if (walletAddress) {
       setBioWallet({ publicKey: { toString: () => walletAddress } });
       refreshBalance(walletAddress);
       return;
     }
-    // Fallback: derive from secretKey if somehow walletAddress isn't stored
-    try {
-      const kp = getWalletFromSecretKey(secretKey);
-      setBioWallet(kp);
-      refreshBalance(kp.publicKey.toString());
-    } catch(e) {
-      console.error('[Dashboard] getWalletFromSecretKey failed:', e.message);
-      navigate('/gmail');
-    }
-  }, [secretKey, demoMode, walletAddress]);
+    navigate('/gmail');
+  }, [secretKey, demoMode, walletAddress, sessionActive]);
 
   const refreshBalance = async (pubkey) => {
     try {
@@ -144,6 +142,7 @@ export default function Dashboard() {
       <div style={s.header}>
         <div style={s.logo}>VAULTLESS</div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button style={s.resetBtn} onClick={() => { clearEnrollment(); navigate('/'); }}>Reset Identity</button>
           <button style={s.reEnrollBtn} onClick={() => navigate('/enroll')}>Re-enroll Identity ↺</button>
           <button style={s.logoutBtn} onClick={() => { setSecretKey(null); navigate('/gmail'); }}>Sign Out</button>
         </div>
@@ -247,6 +246,7 @@ const s = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
   logo: { fontSize: 15, fontWeight: 800, letterSpacing: '0.2em', background: 'linear-gradient(90deg, #00FF4D, #00b8ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
   logoutBtn: { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
+  resetBtn: { background: 'rgba(255,59,59,0.1)', border: '1px solid rgba(255,59,59,0.25)', color: '#ff3b3b', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
   reEnrollBtn: { background: 'transparent', border: '1px solid rgba(0,255,77,0.25)', color: '#00FF4D', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
   reEnrollCard: { background: 'rgba(0,255,77,0.04)', border: '1px solid rgba(0,255,77,0.1)', borderRadius: 16, padding: '20px 24px' },
   reEnrollTitle: { color: '#00FF4D', fontSize: 9, fontWeight: 700, letterSpacing: '0.25em', marginBottom: 10, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
