@@ -9,7 +9,7 @@ const PHRASE = 'Secure my account';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { secretKey, setSecretKey, helperData, solanaLinks } = useVaultless();
+  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode } = useVaultless();
   
   const [bioWallet, setBioWallet] = useState(null);
   const [balance, setBalance] = useState(0);
@@ -25,19 +25,36 @@ export default function Dashboard() {
   const keystroke = useKeystrokeDNA();
   const mouse = useMouseDNA();
   
+  // Stub wallet used in demo mode so we never call getWalletFromSecretKey with a non-hex stub key
+  const DEMO_WALLET_ADDRESS = 'DEMO1111111111111111111111111111111111111111';
+
   useEffect(() => {
     if (!secretKey) {
       navigate('/gmail');
       return;
     }
+    if (demoMode) {
+      setBioWallet({ publicKey: { toString: () => DEMO_WALLET_ADDRESS } });
+      setBalance(0);
+      return;
+    }
+    // Live mode: walletAddress is the Phantom public key set during enrollment.
+    // Use it directly for balance — no need to reconstruct the keypair just to read balance.
+    if (walletAddress) {
+      setBioWallet({ publicKey: { toString: () => walletAddress } });
+      refreshBalance(walletAddress);
+      return;
+    }
+    // Fallback: derive from secretKey if somehow walletAddress isn't stored
     try {
       const kp = getWalletFromSecretKey(secretKey);
       setBioWallet(kp);
       refreshBalance(kp.publicKey.toString());
     } catch(e) {
-      console.error(e);
+      console.error('[Dashboard] getWalletFromSecretKey failed:', e.message);
+      navigate('/gmail');
     }
-  }, [secretKey]);
+  }, [secretKey, demoMode, walletAddress]);
 
   const refreshBalance = async (pubkey) => {
     try {
@@ -50,6 +67,7 @@ export default function Dashboard() {
 
   const handleAirdrop = async () => {
     if (!bioWallet) return;
+    if (demoMode) { setTxStatus('Airdrop not available in demo mode.'); setTimeout(() => setTxStatus(''), 2500); return; }
     setIsAirdropping(true);
     setTxStatus('Requesting Devnet SOL...');
     try {
@@ -125,7 +143,10 @@ export default function Dashboard() {
     <div style={s.root}>
       <div style={s.header}>
         <div style={s.logo}>VAULTLESS</div>
-        <button style={s.logoutBtn} onClick={() => { setSecretKey(null); navigate('/gmail'); }}>Sign Out</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={s.reEnrollBtn} onClick={() => navigate('/enroll')}>Re-enroll Identity ↺</button>
+          <button style={s.logoutBtn} onClick={() => { setSecretKey(null); navigate('/gmail'); }}>Sign Out</button>
+        </div>
       </div>
 
       <div style={s.container}>
@@ -144,6 +165,12 @@ export default function Dashboard() {
                 {isAirdropping ? 'Airdropping...' : 'Request Airdrop ↓'}
               </button>
             </div>
+          </div>
+
+          <div style={s.reEnrollCard}>
+            <div style={s.reEnrollTitle}>⬡ BEHAVIOURAL DNA</div>
+            <p style={s.reEnrollDesc}>Your typing pattern is your key. If your rhythm has drifted or you want to update your identity on-chain, re-enroll to generate a new cryptographic profile.</p>
+            <button style={s.reEnrollCta} onClick={() => navigate('/enroll')}>Re-enroll Identity ↺</button>
           </div>
 
           <div style={s.sendCard}>
@@ -220,6 +247,11 @@ const s = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 40px', borderBottom: '1px solid #1a1b23' },
   logo: { fontSize: 24, fontWeight: 800, letterSpacing: 4, background: 'linear-gradient(90deg, #00ff88, #00b8ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
   logoutBtn: { background: 'transparent', border: '1px solid #333', color: '#888', padding: '8px 16px', borderRadius: 20, cursor: 'pointer', fontSize: 13 },
+  reEnrollBtn: { background: 'transparent', border: '1px solid #00ff8844', color: '#00ff88', padding: '8px 16px', borderRadius: 20, cursor: 'pointer', fontSize: 13 },
+  reEnrollCard: { background: '#0d1a12', border: '1px solid #00ff8822', borderRadius: 16, padding: '20px 24px' },
+  reEnrollTitle: { color: '#00ff88', fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 10 },
+  reEnrollDesc: { color: '#6d7d6d', fontSize: 13, lineHeight: 1.7, margin: '0 0 16px' },
+  reEnrollCta: { background: 'transparent', border: '1px solid #00ff8844', color: '#00ff88', padding: '9px 20px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: 1, fontFamily: "'Courier New', monospace" },
   container: { display: 'flex', flexWrap: 'wrap', gap: 32, padding: '40px', maxWidth: 1200, margin: '0 auto' },
   leftCol: { flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: 24 },
   rightCol: { flex: '1 1 300px' },

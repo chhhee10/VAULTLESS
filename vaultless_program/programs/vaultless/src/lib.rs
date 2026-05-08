@@ -12,11 +12,9 @@ pub mod vaultless {
     pub fn initialize_identity(ctx: Context<InitializeIdentity>, helper_data: String) -> Result<()> {
         let identity = &mut ctx.accounts.identity;
         identity.owner = ctx.accounts.user.key();
-        
-        // We store the helper data (P) which is required for the fuzzy extractor 
-        // to reconstruct the secret key during authentication.
         identity.helper_data = helper_data;
         identity.enrolled_at = Clock::get()?.unix_timestamp;
+        identity.last_auth_at = 0;
         identity.is_locked = false;
         
         msg!("Vaultless Identity Initialized for {}", identity.owner);
@@ -68,12 +66,14 @@ pub struct InitializeIdentity<'info> {
         init, 
         payer = user, 
         // Space breakdown:
-        // 8 bytes discriminator
-        // 32 bytes owner Pubkey
-        // 4 bytes String length prefix + ~200 bytes for JSON string of helper data
-        // 8 bytes i64 timestamp
-        // 1 byte bool
-        space = 8 + 32 + (4 + 256) + 8 + 1, 
+        // 8  bytes  — Anchor account discriminator
+        // 32 bytes  — owner Pubkey
+        // 4  bytes  — String length prefix for helper_data
+        // 4096 bytes — helper_data content (fuzzy extractor JSON, typically 1–3 KB)
+        // 8  bytes  — enrolled_at i64 timestamp
+        // 8  bytes  — last_auth_at i64 timestamp
+        // 1  byte   — is_locked bool
+        space = 8 + 32 + (4 + 4096) + 8 + 8 + 1, 
         seeds = [b"identity", user.key().as_ref()],
         bump
     )]

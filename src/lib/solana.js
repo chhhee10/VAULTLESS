@@ -96,12 +96,29 @@ export async function connectWallet() {
   }
 }
 
+export async function connectPhantom() {
+  const provider = getSolanaProvider();
+  if (!provider) {
+    throw new Error('Phantom wallet not found. Please install the Phantom extension from phantom.app and refresh.');
+  }
+  try {
+    const resp = await provider.connect();
+    return resp.publicKey.toString();
+  } catch (err) {
+    if (err.code === 4001) {
+      throw new Error('Phantom connection was rejected. Please approve the connection request.');
+    }
+    throw new Error(err.message || 'Failed to connect Phantom wallet.');
+  }
+}
+
 export async function getActiveWalletAddress() {
   const provider = getSolanaProvider();
-  if (provider && provider.isConnected) {
+  if (provider && provider.isConnected && provider.publicKey) {
     return provider.publicKey.toString();
   }
-  return null;
+  // Not connected yet — trigger connect popup
+  return connectPhantom();
 }
 
 export async function getAnchorProgram() {

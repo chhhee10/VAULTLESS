@@ -13,7 +13,7 @@ const PHRASE = 'Secure my account';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey, setIsDuressMode, setLastAuthScore, addSolanaLink, demoMode, setWalletAddress } = useVaultless();
+  const { enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey, setSecretKey, setIsDuressMode, setLastAuthScore, addSolanaLink, demoMode, setWalletAddress } = useVaultless();
   const { isMobile, width: viewportWidth } = useViewport();
   const graphWidth = isMobile ? viewportWidth - 60 : 440;
   const mobileLikeDevice = isMobileBrowser();
@@ -173,6 +173,7 @@ export default function Auth() {
         const recovered = authenticateFuzzyExtractor(discreteLiveVector, helperData);
         if (recovered) {
             setRecoveredKey(recovered);
+            setSecretKey(recovered); // ← commit recovered key to context so Dashboard guard passes
             console.log('[Fuzzy Extractor] ✅ SUCCESS! Recovered Secret Key:', recovered);
             if (recovered === secretKey) {
                 console.log('[Fuzzy Extractor] 🔒 Key perfectly matches enrollment!');
@@ -215,6 +216,10 @@ export default function Auth() {
           await new Promise(r => setTimeout(r, 1200));
           const fakeTx = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
           addSolanaLink('AuthSuccess', fakeTx);
+          // In demo mode without a recovered key, mint a stub so Dashboard's secretKey guard passes
+          if (!secretKey) {
+            setSecretKey('demo-session-' + fakeTx.slice(0, 16));
+          }
           setStatusMsg('Authenticated. Redirecting...');
           setTimeout(() => navigate('/dashboard'), 2000);
           return;

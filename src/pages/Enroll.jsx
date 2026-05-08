@@ -5,8 +5,8 @@ import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics }
 import { enroll as enrollFuzzyExtractor } from '../hooks/fuzzyExtractor';
 import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getActiveWalletAddress, isMobileBrowser, canOpenMetaMaskDeepLink } from '../lib/ethereum';
-import { registerIdentityOnChain } from '../lib/solana';
+import { isMobileBrowser } from '../lib/ethereum';
+import { getActiveWalletAddress, registerIdentityOnChain } from '../lib/solana';
 
 const PHRASE = 'Secure my account';
 const REQUIRED_SAMPLES = 3;
@@ -151,22 +151,18 @@ export default function Enroll() {
     try {
       setRecoveryEmail(email);
       if (demoMode) {
-        setWalletAddr('0xDEMO...1234');
-        setWalletAddress('0xDEMO...1234');
+        setWalletAddr('DEMO1111111111111111111111111111111111111111');
+        setWalletAddress('DEMO1111111111111111111111111111111111111111');
         setPhase('capturing');
         return;
       }
+      // This will trigger the Phantom popup if not already connected
       const addr = await getActiveWalletAddress();
       setWalletAddr(addr);
       setWalletAddress(addr);
       setPhase('capturing');
     } catch (e) {
-      if (isMobileBrowser() && !canOpenMetaMaskDeepLink()) {
-        setStatusMsg('Phantom mobile needs a deployed HTTPS URL. If you are testing on mobile, open the live site inside the Phantom browser.');
-        return;
-      }
-
-      setStatusMsg(e.message || 'Phantom connection failed.');
+      setStatusMsg(e.message || 'Phantom connection failed. Make sure Phantom is installed and unlocked.');
     }
   };
 
