@@ -1,237 +1,147 @@
+import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVaultless } from '../lib/VaultlessContext';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Environment } from '@react-three/drei';
+import { useMotionValue, useSpring } from 'framer-motion';
+import * as THREE from 'three';
+
+const InteractiveHexagon = ({ mouseX, mouseY }) => {
+  const meshRef = useRef();
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+
+    // Base rotation to make the cylinder face the camera (Math.PI / 2 on X)
+    // Then we add the mouse offset to make it "look" at the cursor
+    const targetX = Math.PI / 2 + (mouseY.get() * Math.PI) / 4;
+    const targetY = (mouseX.get() * Math.PI) / 4;
+
+    // Smoothly interpolate current rotation to the target
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetX, 0.1);
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetY, 0.1);
+
+    // Add a slight idle breathing animation
+    meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.15;
+  });
+
+  return (
+    <mesh ref={meshRef} scale={1.8}>
+      {/* 6-sided cylinder = Hexagon */}
+      <cylinderGeometry args={[1, 1, 0.4, 6]} />
+      <meshStandardMaterial
+        color="#00FF4D"
+        roughness={0.2}
+        metalness={0.8}
+        flatShading={true}
+      />
+    </mesh>
+  );
+};
 
 export default function WalletAccess() {
   const navigate = useNavigate();
   const { isEnrolled, demoMode } = useVaultless();
 
+  // Mouse tracking for the 3D hexagon
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const springConfig = { damping: 25, stiffness: 150 };
+  const smoothMouseX = useSpring(mouseX, springConfig);
+  const smoothMouseY = useSpring(mouseY, springConfig);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      // Normalize to -1 to 1 range
+      const x = (e.clientX / window.innerWidth) * 2 - 1;
+      const y = (e.clientY / window.innerHeight) * 2 - 1;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
   return (
-    <div style={s.root}>
-      {/* Ambient glow */}
-      <div style={s.glow} />
+    <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
 
       {/* Header */}
-      <div style={s.header}>
-        <button style={s.backBtn} onClick={() => navigate('/')}>← VAULTLESS</button>
-      </div>
+      <header className="p-8 md:px-12 flex items-center justify-between z-10 relative">
+        <button
+          onClick={() => navigate('/')}
+          className="text-xs font-mono font-bold tracking-widest hover:opacity-70 transition-opacity"
+        >
+          ← VAULTLESS
+        </button>
+      </header>
 
-      <div style={s.container}>
-        <div style={s.card}>
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 z-10 relative pb-32">
 
-          {/* Icon */}
-          <div style={s.iconWrap}>
-            <span style={s.icon}>⬡</span>
+        {/* Wallet Card */}
+        <div className="w-full max-w-sm bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 shadow-2xl relative">
+
+          {/* Floating 3D Fox/Hexagon */}
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 pointer-events-none">
+            <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+              <ambientLight intensity={0.5} />
+              <directionalLight position={[10, 10, 10]} intensity={1.5} />
+              <directionalLight position={[-10, -10, -10]} intensity={0.5} color="#00FF4D" />
+              <InteractiveHexagon mouseX={smoothMouseX} mouseY={smoothMouseY} />
+              <Environment preset="city" />
+            </Canvas>
           </div>
 
-          <h1 style={s.title}>Access Your Wallet</h1>
-          <p style={s.subtitle}>
-            {demoMode
-              ? 'Demo mode — your biometric session will not touch the chain.'
-              : 'Authenticate with your behavioural signature to unlock your wallet.'}
-          </p>
+          <div className="mt-20 text-center text-white">
+            <h1 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-3 whitespace-nowrap">Access Wallet</h1>
+            <p className="text-white/80 text-sm font-mono mb-8 leading-relaxed">
+              {demoMode
+                ? 'Demo mode active. Biometrics will not touch the chain.'
+                : 'Authenticate with your behavioral signature.'}
+            </p>
 
-          {demoMode && (
-            <div style={s.demoBadge}>DEMO MODE</div>
-          )}
-
-          <div style={s.divider} />
-
-          <div style={s.actions}>
-            {isEnrolled ? (
-              <>
-                <button
-                  id="authenticate-btn"
-                  style={s.primaryBtn}
-                  onClick={() => navigate('/auth')}
-                >
-                  Authenticate →
-                </button>
-                <p style={s.hint}>Already enrolled — type your phrase to unlock.</p>
-              </>
-            ) : (
-              <>
-                <button
-                  id="enroll-btn"
-                  style={s.primaryBtn}
-                  onClick={() => navigate('/enroll')}
-                >
-                  Enroll Identity →
-                </button>
-                <p style={s.hint}>First time? Set up your biometric signature.</p>
-              </>
+            {demoMode && (
+              <div className="inline-block bg-[#00FF4D]/10 border border-[#00FF4D]/25 text-[#00FF4D] text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-6">
+                Demo Mode
+              </div>
             )}
-          </div>
 
-          <div style={s.securityRow}>
-            <span style={s.chip}>⬡ Zero-Knowledge</span>
-            <span style={s.chip}>⬡ On-Chain</span>
-            <span style={s.chip}>⬡ Anti-Coercion</span>
-          </div>
+            <div className="space-y-4">
+              {isEnrolled ? (
+                <>
+                  <button
+                    onClick={() => navigate('/auth')}
+                    className="w-full bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-sm font-bold uppercase tracking-widest py-4 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]"
+                  >
+                    Authenticate →
+                  </button>
+                  <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Type your phrase to unlock</p>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate('/enroll')}
+                    className="w-full bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-sm font-bold uppercase tracking-widest py-4 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]"
+                  >
+                    Enroll Identity →
+                  </button>
+                  <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Setup your signature first</p>
+                </>
+              )}
+            </div>
 
+            <div className="mt-8 pt-6 border-t border-white/20 flex justify-center gap-3">
+              <span className="bg-white/10 border border-white/20 text-white/80 text-[9px] font-mono uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">Zero-Knowledge</span>
+              <span className="bg-white/10 border border-white/20 text-white/80 text-[9px] font-mono uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">On-Chain</span>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom note */}
-        <p style={s.footnote}>
-          Your key is derived from how you type — not stored anywhere.
+        <p className="mt-12 text-black/50 text-[10px] font-mono uppercase tracking-widest font-bold">
+          Your key is derived from <span className="text-[#00FF4D] bg-black px-2 py-0.5 ml-1 rounded-sm">how you type</span>
         </p>
-      </div>
+      </main>
     </div>
   );
 }
-
-const s = {
-  root: {
-    minHeight: '100vh',
-    background: '#050508',
-    color: '#fff',
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  glow: {
-    position: 'fixed',
-    top: '35%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 700,
-    height: 700,
-    background: 'radial-gradient(circle, rgba(0,255,77,0.07) 0%, transparent 65%)',
-    pointerEvents: 'none',
-  },
-  header: {
-    padding: '20px 40px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-  backBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#00FF4D',
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.15em',
-    fontFamily: "'JetBrains Mono', monospace",
-    textTransform: 'uppercase',
-  },
-  container: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '40px 24px',
-    gap: 20,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 24,
-    padding: '44px 40px 36px',
-    textAlign: 'center',
-    backdropFilter: 'blur(20px)',
-    boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
-  },
-  iconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: '50%',
-    background: 'rgba(0,255,77,0.08)',
-    border: '1px solid rgba(0,255,77,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 24px',
-  },
-  icon: {
-    fontSize: 28,
-    color: '#00FF4D',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 300,
-    margin: '0 0 10px',
-    letterSpacing: '-0.03em',
-    fontFamily: "'Syne', sans-serif",
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.4)',
-    margin: '0 0 20px',
-    lineHeight: 1.6,
-  },
-  demoBadge: {
-    display: 'inline-block',
-    background: 'rgba(0,255,77,0.1)',
-    border: '1px solid rgba(0,255,77,0.25)',
-    color: '#00FF4D',
-    fontSize: 9,
-    fontWeight: 800,
-    letterSpacing: '0.2em',
-    padding: '5px 14px',
-    borderRadius: 100,
-    fontFamily: "'JetBrains Mono', monospace",
-    marginBottom: 20,
-    textTransform: 'uppercase',
-  },
-  divider: {
-    height: 1,
-    background: 'rgba(255,255,255,0.06)',
-    margin: '24px 0',
-  },
-  actions: {
-    marginBottom: 28,
-  },
-  primaryBtn: {
-    width: '100%',
-    padding: '15px',
-    background: '#00FF4D',
-    color: '#000',
-    border: 'none',
-    borderRadius: 100,
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: '0.15em',
-    cursor: 'pointer',
-    fontFamily: "'JetBrains Mono', monospace",
-    textTransform: 'uppercase',
-    boxShadow: '0 8px 32px rgba(0,255,77,0.25)',
-    marginBottom: 12,
-    transition: 'all 0.2s',
-  },
-  hint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    margin: 0,
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  securityRow: {
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-    paddingTop: 20,
-  },
-  chip: {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    color: 'rgba(255,255,255,0.3)',
-    padding: '5px 12px',
-    borderRadius: 100,
-    fontSize: 10,
-    fontFamily: "'JetBrains Mono', monospace",
-    letterSpacing: '0.05em',
-  },
-  footnote: {
-    color: 'rgba(255,255,255,0.18)',
-    fontSize: 12,
-    fontFamily: "'JetBrains Mono', monospace",
-    letterSpacing: '0.05em',
-    textAlign: 'center',
-  },
-};

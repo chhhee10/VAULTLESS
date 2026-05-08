@@ -9,7 +9,7 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section className="relative w-full h-[40vh] md:h-[50vh] bg-white overflow-hidden font-sans">
+    <section className="relative w-full py-24 md:py-0 min-h-[80vh] md:h-[50vh] md:min-h-0 bg-white overflow-hidden font-sans">
       
       {/* Background Giant Text */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">

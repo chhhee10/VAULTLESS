@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useVaultless } from '../lib/VaultlessContext';
 import { getWalletBalance, requestAirdrop, sendSol, getWalletFromSecretKey } from '../lib/solana';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
@@ -25,17 +26,13 @@ export default function Dashboard() {
   const keystroke = useKeystrokeDNA();
   const mouse = useMouseDNA();
   
-  // Stub wallet used in demo mode so we never call getWalletFromSecretKey with a non-hex stub key
   const DEMO_WALLET_ADDRESS = 'DEMO1111111111111111111111111111111111111111';
 
   useEffect(() => {
-    // Session guard: If we haven't just authenticated, go back to portal
     if (!sessionActive) {
       navigate('/gmail');
       return;
     }
-
-    // In demo mode, use a stub wallet
     if (demoMode) {
       if (!secretKey) {
         navigate('/gmail');
@@ -45,7 +42,6 @@ export default function Dashboard() {
       setBalance(0);
       return;
     }
-    // Live mode
     if (walletAddress) {
       setBioWallet({ publicKey: { toString: () => walletAddress } });
       refreshBalance(walletAddress);
@@ -113,12 +109,11 @@ export default function Dashboard() {
     
     const liveVector = buildCombinedVector(kData, mData);
     const liveDiscrete = quantizeBiometrics(liveVector);
-    const expectedPubKey = bioWallet.publicKey.toString(); // We mock the expected pubkey for the fuzzy extractor
+    const expectedPubKey = bioWallet.publicKey.toString(); 
     
     const recoveredKey = authenticateFuzzyExtractor(liveDiscrete, helperData, expectedPubKey);
     
     if (recoveredKey) {
-      // Signature is valid because the key matches!
       setTxStatus('Identity verified! Signing transaction...');
       try {
         const kp = getWalletFromSecretKey(recoveredKey);
@@ -135,155 +130,242 @@ export default function Dashboard() {
     }
   };
 
-  if (!bioWallet) return <div style={s.root}><h2 style={{color:'#fff', textAlign:'center', marginTop:100}}>Loading Wallet...</h2></div>;
+  if (!bioWallet) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f2] flex items-center justify-center">
+        <div className="text-black text-xs font-mono uppercase tracking-[0.2em] animate-pulse font-bold">Initializing Biometric Core...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={s.root}>
-      <div style={s.header}>
-        <div style={s.logo}>VAULTLESS</div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button style={s.resetBtn} onClick={() => { clearEnrollment(); navigate('/'); }}>Reset Identity</button>
-          <button style={s.reEnrollBtn} onClick={() => navigate('/enroll')}>Re-enroll Identity ↺</button>
-          <button style={s.logoutBtn} onClick={() => { setSecretKey(null); navigate('/gmail'); }}>Sign Out</button>
+    <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black pb-24">
+      
+      {/* Header */}
+      <header className="p-8 md:px-12 flex flex-col md:flex-row items-center justify-between z-10 relative gap-6 md:gap-0">
+        <button 
+          onClick={() => navigate('/')}
+          className="text-xs font-bold tracking-[0.2em] uppercase hover:opacity-70 transition-opacity"
+        >
+          ← VAULTLESS
+        </button>
+        <div className="flex flex-wrap justify-center gap-4">
+          <button 
+            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full border-2 border-black hover:bg-black hover:text-white transition-colors"
+            onClick={() => { clearEnrollment(); navigate('/'); }}
+          >
+            Reset Identity
+          </button>
+          <button 
+            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full border-2 border-[#00FF4D] bg-[#00FF4D] text-black hover:bg-[#00FF4D]/80 transition-colors shadow-[4px_4px_0_0_#000]"
+            onClick={() => navigate('/enroll')}
+          >
+            Re-enroll ↺
+          </button>
+          <button 
+            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full text-black hover:opacity-50 transition-opacity"
+            onClick={() => { setSecretKey(null); navigate('/gmail'); }}
+          >
+            Sign Out
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div style={s.container}>
-        {/* Left Col: Wallet Card & Send Form */}
-        <div style={s.leftCol}>
-          <div style={s.walletCard}>
-            <div style={s.cardHeader}>
-              <span>BIOMETRIC WALLET</span>
-              <span style={s.networkBadge}>Devnet</span>
-            </div>
-            <div style={s.balance}>{balance.toFixed(4)} SOL</div>
-            <div style={s.address}>{bioWallet.publicKey.toString()}</div>
+      {/* Main Grid */}
+      <main className="relative z-10 max-w-6xl mx-auto w-full px-6 md:px-12 pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Left Column */}
+          <div className="lg:col-span-7 space-y-8">
             
-            <div style={s.actionRow}>
-              <button style={s.actionBtn} onClick={handleAirdrop} disabled={isAirdropping}>
-                {isAirdropping ? 'Airdropping...' : 'Request Airdrop ↓'}
+            {/* Wallet Hero Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 text-white shadow-2xl relative"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <span className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase">Biometric Wallet</span>
+                <span className="bg-[#00FF4D] text-black px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.2em] uppercase">Devnet</span>
+              </div>
+              
+              <div className="font-display text-5xl md:text-7xl font-bold tracking-[1px] uppercase mb-4">
+                {balance.toFixed(4)} <span className="text-[#00FF4D]">SOL</span>
+              </div>
+              
+              <div className="text-white/50 text-[10px] md:text-xs font-mono break-all mb-10 bg-white/5 inline-block p-3 rounded-xl border border-white/10">
+                {bioWallet.publicKey.toString()}
+              </div>
+              
+              <div className="block">
+                <button 
+                  className="bg-white text-black px-8 py-4 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] font-bold transition-transform hover:scale-[1.02] active:scale-95 w-full md:w-auto"
+                  onClick={handleAirdrop} 
+                  disabled={isAirdropping}
+                >
+                  {isAirdropping ? 'Airdropping...' : 'Request Devnet Airdrop ↓'}
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Send Crypto Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-10 text-white shadow-2xl"
+            >
+              <h3 className="font-display text-3xl font-bold tracking-[1px] uppercase mb-8">Send Crypto</h3>
+              
+              <div className="space-y-4 mb-8">
+                <input 
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#00FF4D] rounded-xl px-6 py-5 text-white font-mono text-sm outline-none transition-colors placeholder:text-white/30"
+                  placeholder="Recipient Address" 
+                  value={recipient}
+                  onChange={e => setRecipient(e.target.value)}
+                />
+                <input 
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#00FF4D] rounded-xl px-6 py-5 text-white font-mono text-sm outline-none transition-colors placeholder:text-white/30"
+                  placeholder="Amount (SOL)" 
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                />
+              </div>
+              
+              <button 
+                className="w-full bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs font-bold uppercase tracking-[1px] py-5 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]"
+                onClick={startSend}
+              >
+                Sign & Send →
               </button>
-            </div>
+              
+              {txStatus && (
+                <div className="mt-6 text-[#00FF4D] text-[10px] font-mono tracking-[0.1em] text-center uppercase bg-[#00FF4D]/10 border border-[#00FF4D]/20 py-3 rounded-xl">
+                  {txStatus}
+                </div>
+              )}
+            </motion.div>
+            
           </div>
 
-          <div style={s.reEnrollCard}>
-            <div style={s.reEnrollTitle}>⬡ BEHAVIOURAL DNA</div>
-            <p style={s.reEnrollDesc}>Your typing pattern is your key. If your rhythm has drifted or you want to update your identity on-chain, re-enroll to generate a new cryptographic profile.</p>
-            <button style={s.reEnrollCta} onClick={() => navigate('/enroll')}>Re-enroll Identity ↺</button>
-          </div>
+          {/* Right Column */}
+          <div className="lg:col-span-5 space-y-8">
+            
+            {/* Re-enroll Callout */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#0088ff]/10 blur-[50px] rounded-full pointer-events-none" />
+              <div className="text-[#0088ff] text-[10px] font-mono tracking-[0.2em] uppercase font-bold mb-4 relative z-10">⬡ DNA Drift Detection</div>
+              <p className="text-white/70 text-sm leading-relaxed mb-6 font-sans relative z-10">
+                Your typing pattern is your key. If your keyboard rhythm has naturally drifted over time, re-enroll to generate an updated cryptographic profile.
+              </p>
+              <button 
+                className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-4 rounded-full font-mono text-[10px] uppercase tracking-[0.1em] font-bold transition-all relative z-10"
+                onClick={() => navigate('/enroll')}
+              >
+                Re-calibrate Profile
+              </button>
+            </motion.div>
 
-          <div style={s.sendCard}>
-            <h3 style={s.sendTitle}>Send Crypto</h3>
-            <input 
-              style={s.input} 
-              placeholder="Recipient Address" 
-              value={recipient}
-              onChange={e => setRecipient(e.target.value)}
-            />
-            <input 
-              style={s.input} 
-              placeholder="Amount (SOL)" 
-              type="number"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-            />
-            <button style={s.sendBtn} onClick={startSend}>
-              Sign & Send
-            </button>
-            {txStatus && <div style={s.status}>{txStatus}</div>}
+            {/* Activity Feed */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 min-h-[400px] text-white shadow-2xl"
+            >
+              <h3 className="font-display text-2xl font-bold tracking-[1px] uppercase mb-8">On-Chain Activity</h3>
+              
+              {solanaLinks.length === 0 ? (
+                <div className="text-white/40 text-[10px] font-mono text-center mt-20 uppercase tracking-[0.2em]">No activity yet.</div>
+              ) : (
+                <div className="space-y-4">
+                  {solanaLinks.map((link, i) => (
+                    <a 
+                      key={i} 
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="block bg-white/5 border border-white/10 hover:border-[#00FF4D]/50 hover:bg-white/10 rounded-xl p-4 transition-all group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-[#00FF4D]/10 text-[#00FF4D] flex items-center justify-center font-mono text-xs border border-[#00FF4D]/20 group-hover:scale-110 transition-transform">
+                          ⬡
+                        </div>
+                        <div>
+                          <div className="text-white/90 text-sm font-sans font-bold mb-1">{link.label}</div>
+                          <div className="text-white/50 text-[10px] font-mono tracking-[0.1em]">{link.timestamp}</div>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
           </div>
         </div>
+      </main>
 
-        {/* Right Col: Activity */}
-        <div style={s.rightCol}>
-          <div style={s.activityCard}>
-            <h3 style={s.sendTitle}>Security & Activity</h3>
-            {solanaLinks.length === 0 ? (
-              <div style={s.emptyActivity}>No on-chain activity yet.</div>
-            ) : (
-              solanaLinks.map((link, i) => (
-                <a key={i} href={link.url} target="_blank" rel="noreferrer" style={s.eventLink}>
-                  <div style={s.eventIcon}>⬡</div>
-                  <div style={s.eventBody}>
-                    <div style={s.eventLabel}>{link.label}</div>
-                    <div style={s.eventTime}>{link.timestamp}</div>
-                  </div>
-                </a>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Send Auth Modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#f7f7f2]/90 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-lg bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] text-center relative overflow-hidden text-white"
+            >
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4 relative z-10">Sign Transaction</h2>
+              <p className="text-white/70 text-sm mb-8 font-sans relative z-10 leading-relaxed">
+                Type the phrase below to reconstruct your secret key on the fly and sign this transfer.
+              </p>
+              
+              <div className="text-2xl md:text-3xl text-white/70 tracking-widest font-mono mb-10 opacity-70 relative z-10">
+                "{PHRASE}"
+              </div>
+              
+              <div className="relative mb-8 max-w-sm mx-auto z-10">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#00FF4D]/50 font-mono text-xl pointer-events-none">
+                  &gt;
+                </div>
+                <input
+                  autoFocus
+                  className="w-full bg-black border-2 border-white/10 focus:border-[#00FF4D] rounded-xl text-[#00FF4D] text-lg text-left pl-14 pr-6 py-5 outline-none tracking-widest font-mono transition-all placeholder:text-white/10 shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)] focus:shadow-[0_0_20px_rgba(0,255,77,0.1)]"
+                  value={currentInput}
+                  onChange={e => setCurrentInput(e.target.value)}
+                  onKeyDown={keystroke.onKeyDown}
+                  onKeyUp={handleKeyUp}
+                  placeholder=""
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
+              
+              <p className="text-white/80 text-[10px] font-mono uppercase tracking-[0.2em] mb-6">Press Enter ⏎ to submit</p>
 
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div style={s.modalOverlay}>
-          <div style={s.modal}>
-            <h2 style={s.modalTitle}>Biometric Signature Required</h2>
-            <p style={s.modalDesc}>Type the phrase below to reconstruct your secret key and sign this transaction.</p>
-            <div style={s.phrase}>"{PHRASE}"</div>
-            <input
-              autoFocus
-              style={s.modalInput}
-              value={currentInput}
-              onChange={e => setCurrentInput(e.target.value)}
-              onKeyDown={keystroke.onKeyDown}
-              onKeyUp={handleKeyUp}
-              placeholder="Type phrase here..."
-              autoComplete="off"
-              spellCheck="false"
-            />
-            <button style={s.cancelBtn} onClick={() => setShowAuthModal(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
+              <button 
+                className="text-white/50 hover:text-white text-[10px] font-mono uppercase tracking-[0.2em] transition-colors relative z-10"
+                onClick={() => setShowAuthModal(false)}
+              >
+                Cancel Transaction
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-const s = {
-  root: { minHeight: '100vh', background: '#050508', color: '#fff', fontFamily: "'Inter', system-ui, sans-serif" },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  logo: { fontSize: 15, fontWeight: 800, letterSpacing: '0.2em', background: 'linear-gradient(90deg, #00FF4D, #00b8ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
-  logoutBtn: { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
-  resetBtn: { background: 'rgba(255,59,59,0.1)', border: '1px solid rgba(255,59,59,0.25)', color: '#ff3b3b', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
-  reEnrollBtn: { background: 'transparent', border: '1px solid rgba(0,255,77,0.25)', color: '#00FF4D', padding: '8px 18px', borderRadius: 100, cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', fontWeight: 700 },
-  reEnrollCard: { background: 'rgba(0,255,77,0.04)', border: '1px solid rgba(0,255,77,0.1)', borderRadius: 16, padding: '20px 24px' },
-  reEnrollTitle: { color: '#00FF4D', fontSize: 9, fontWeight: 700, letterSpacing: '0.25em', marginBottom: 10, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  reEnrollDesc: { color: 'rgba(255,255,255,0.35)', fontSize: 13, lineHeight: 1.7, margin: '0 0 16px' },
-  reEnrollCta: { background: 'transparent', border: '1px solid rgba(0,255,77,0.25)', color: '#00FF4D', padding: '9px 20px', borderRadius: 100, cursor: 'pointer', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  container: { display: 'flex', flexWrap: 'wrap', gap: 24, padding: '32px 40px', maxWidth: 1200, margin: '0 auto' },
-  leftCol: { flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: 20 },
-  rightCol: { flex: '1 1 300px' },
-
-  walletCard: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 32, position: 'relative', overflow: 'hidden', backdropFilter: 'blur(20px)' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 700, letterSpacing: '0.25em', marginBottom: 24, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  networkBadge: { background: 'rgba(0,255,77,0.1)', color: '#00FF4D', padding: '4px 10px', borderRadius: 100, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '0.1em' },
-  balance: { fontSize: 48, fontWeight: 700, marginBottom: 8, color: '#fff', fontFamily: "'Syne', sans-serif", letterSpacing: '-0.03em' },
-  address: { fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono', monospace", wordBreak: 'break-all', marginBottom: 32 },
-  actionRow: { display: 'flex', gap: 12 },
-  actionBtn: { flex: 1, background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.08)', padding: '14px', borderRadius: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: 13 },
-
-  sendCard: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 32, backdropFilter: 'blur(20px)' },
-  sendTitle: { fontSize: 14, fontWeight: 700, marginBottom: 20, color: '#fff', letterSpacing: '0.05em', fontFamily: "'Syne', sans-serif" },
-  input: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 16px', color: '#fff', fontSize: 14, marginBottom: 12, outline: 'none', boxSizing: 'border-box', fontFamily: "'Inter', sans-serif', transition: 'border-color 0.2s'" },
-  sendBtn: { width: '100%', background: '#00FF4D', color: '#000', border: 'none', padding: '15px', borderRadius: 100, fontSize: 11, fontWeight: 800, cursor: 'pointer', marginTop: 8, letterSpacing: '0.15em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', boxShadow: '0 8px 32px rgba(0,255,77,0.25)' },
-  status: { marginTop: 16, fontSize: 12, color: '#00FF4D', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" },
-
-  activityCard: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 32, minHeight: 400, backdropFilter: 'blur(20px)' },
-  emptyActivity: { color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60, fontFamily: "'JetBrains Mono', monospace" },
-  eventLink: { display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', textDecoration: 'none', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', transition: 'all 0.2s', marginBottom: 8, background: 'rgba(255,255,255,0.02)' },
-  eventIcon: { width: 38, height: 38, borderRadius: '50%', background: 'rgba(0,255,77,0.08)', color: '#00FF4D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: '1px solid rgba(0,255,77,0.15)' },
-  eventBody: { flex: 1 },
-  eventLabel: { color: '#fff', fontSize: 14, fontWeight: 500, marginBottom: 3 },
-  eventTime: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontFamily: "'JetBrains Mono', monospace" },
-
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  modal: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 40, width: '100%', maxWidth: 480, textAlign: 'center', backdropFilter: 'blur(20px)' },
-  modalTitle: { fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12, fontFamily: "'Syne', sans-serif", letterSpacing: '-0.02em' },
-  modalDesc: { fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 24 },
-  phrase: { fontSize: 20, color: '#00FF4D', fontFamily: "'JetBrains Mono', monospace", marginBottom: 32, background: 'rgba(0,255,77,0.06)', padding: '16px', borderRadius: 10, border: '1px solid rgba(0,255,77,0.15)' },
-  modalInput: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,255,77,0.2)', borderRadius: 10, padding: '16px', color: '#00FF4D', fontSize: 18, textAlign: 'center', outline: 'none', marginBottom: 24, boxSizing: 'border-box', fontFamily: "'JetBrains Mono', monospace" },
-  cancelBtn: { background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 13, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' },
-};
-
