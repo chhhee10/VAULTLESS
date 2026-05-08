@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, ReferenceLine } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
 import { enroll as enrollFuzzyExtractor } from '../hooks/fuzzyExtractor';
 import { useViewport } from '../hooks/useViewport';
@@ -93,7 +93,6 @@ export default function Enroll() {
     return () => clearInterval(interval);
   }, [mobileLikeDevice, phase, mouse.getDiagnostics]);
 
-  // Build live graph from keystroke events
   useEffect(() => {
     if (keystroke.events.length > 0) {
       const data = keystroke.events.slice(-30).map((e, i) => ({
@@ -105,7 +104,6 @@ export default function Enroll() {
     }
   }, [keystroke.events]);
 
-  // Build live gyro graph
   useEffect(() => {
     const interval = setInterval(() => {
       const motion = mouse.getMotionData();
@@ -119,11 +117,10 @@ export default function Enroll() {
         }));
         setGyroGraphData(data);
       }
-    }, 200); // Update every 200ms
+    }, 200);
     return () => clearInterval(interval);
   }, [mouse.getMotionData]);
 
-  // Build live touch graph
   useEffect(() => {
     const interval = setInterval(() => {
       const pts = mouse.getPoints();
@@ -156,7 +153,6 @@ export default function Enroll() {
         setPhase('capturing');
         return;
       }
-      // This will trigger the Phantom popup if not already connected
       const addr = await getActiveWalletAddress();
       setWalletAddr(addr);
       setWalletAddress(addr);
@@ -216,22 +212,6 @@ export default function Enroll() {
     : sensorDiag.platform === 'android' && sensorDiag.browser === 'chrome'
       ? 'Sensor access is blocked. In Chrome Android, allow Motion sensors in Site settings, then reload.'
       : 'Sensor access is blocked. Enable motion/orientation access in browser settings, then reload.';
-  const ui = {
-    header: isMobile ? { ...styles.header, padding: '16px 18px' } : styles.header,
-    container: isMobile ? { ...styles.container, padding: '28px 12px 40px' } : styles.container,
-    card: isMobile ? { ...styles.card, borderRadius: 10, padding: '28px 18px' } : styles.card,
-    title: isMobile ? { ...styles.title, fontSize: 22, margin: '0 0 12px' } : styles.title,
-    desc: isMobile ? { ...styles.desc, fontSize: 14, lineHeight: 1.65, marginBottom: 24 } : styles.desc,
-    phrase: isMobile ? { ...styles.phrase, fontSize: 18, margin: '18px 0', lineHeight: 1.4 } : styles.phrase,
-    steps: isMobile ? { ...styles.steps, fontSize: 12, lineHeight: 1.8, marginBottom: 24 } : styles.steps,
-    cta: isMobile ? { ...styles.cta, width: '100%', padding: '13px 18px', fontSize: 12, letterSpacing: 1.2 } : styles.cta,
-    ctaSmall: isMobile ? { ...styles.ctaSmall, width: '100%' } : styles.ctaSmall,
-    recoveryInput: isMobile ? { ...styles.recoveryInput, fontSize: 16 } : styles.recoveryInput,
-    typeInput: isMobile ? { ...styles.typeInput, fontSize: 16, letterSpacing: 1, padding: '14px 12px' } : styles.typeInput,
-    graphContainer: isMobile ? { ...styles.graphContainer, marginTop: 20, padding: '12px' } : styles.graphContainer,
-    graphLegend: isMobile ? { ...styles.graphLegend, gap: 12, fontSize: 10, flexWrap: 'wrap' } : styles.graphLegend,
-    sensorMiniRow: isMobile ? { ...styles.sensorMiniRow, alignItems: 'flex-start' } : styles.sensorMiniRow,
-  };
 
   const handleKeyUp = (e) => {
     keystroke.onKeyUp(e);
@@ -264,7 +244,6 @@ export default function Enroll() {
       setStatusMsg(`Sample ${newCount}/${REQUIRED_SAMPLES} captured. Type again.`);
       inputRef.current?.focus();
     } else {
-      // Average all samples
       commitToChain(newSamples);
     }
   };
@@ -278,7 +257,6 @@ export default function Enroll() {
     return avg;
   };
 
-  // Average all scalar fields AND array fields (holdTimes, flightTimes) across samples
   const averageKeystroke = (samples) => {
     const scalar = (key) => samples.reduce((sum, s) => sum + (s[key] || 0), 0) / samples.length;
     const avgArr = (key) => {
@@ -289,7 +267,6 @@ export default function Enroll() {
       });
     };
     
-    // Helper: Z-score normalize an array
     const zNormalize = (arr) => {
       if (!arr || arr.length < 2) return arr || [];
       const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -378,7 +355,6 @@ export default function Enroll() {
     const avgKeystroke  = averageKeystroke(sampleList.map(s => s.keystroke));
     const avgMouse      = averageMouse(sampleList.map(s => s.mouse).filter(Boolean));
 
-    // V2: Quantize and Extract Fuzzy Helper Data
     const discreteVector = quantizeBiometrics(finalVector);
     const { secretKey, helperData } = enrollFuzzyExtractor(discreteVector);
 
@@ -387,7 +363,6 @@ export default function Enroll() {
     setEnrollmentMouse(avgMouse || null);
     setHelperData(helperData);
     setSecretKey(secretKey);
-    console.log('[Fuzzy Extractor] Enrolled! Secret Key generated:', secretKey);
 
     try {
       if (demoMode) {
@@ -415,310 +390,242 @@ export default function Enroll() {
   };
 
   return (
-      <div style={styles.root}>
-      <div style={ui.header}>
-        <button style={styles.back} onClick={() => navigate('/')}>← VAULTLESS</button>
-        <div style={styles.step}>ENROLLMENT</div>
-      </div>
+    <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
+      
+      {/* Header */}
+      <header className="absolute top-0 left-0 w-full p-8 md:px-12 flex items-center justify-between z-20">
+        <button 
+          onClick={() => navigate('/')}
+          className="text-xs font-bold tracking-[0.2em] hover:opacity-70 transition-opacity"
+        >
+          ← VAULTLESS
+        </button>
+      </header>
 
-      <div style={ui.container}>
-        
-        <div style={{ display: phase === 'intro' ? 'flex' : 'none', width: '100%', justifyContent: 'center' }}>
-
-          <div key="intro" style={ui.card}>
-            <h2 style={ui.title}>Enroll Your Identity</h2>
-            <p style={ui.desc}>
-              You'll type <strong style={{ color: '#00ff88' }}>"{PHRASE}"</strong> three times.<br />
-              Your keystroke rhythm becomes your cryptographic identity.
-            </p>
-            <ul style={ui.steps}>
-              <li>Type naturally — don't try to be consistent</li>
-              <li>Your behavioural DNA is captured, never stored</li>
-              <li>The Fuzzy Extractor outputs the wallet key and pushes Helper Data to Solana</li>
-            </ul>
-            <input
-              style={ui.recoveryInput}
-              type="email"
-              value={backupEmail}
-              onChange={(e) => setBackupEmail(e.target.value)}
-              placeholder="Recovery email for duress alerts"
-              autoComplete="email"
-            />
-            <button style={ui.cta} onClick={connectWallet}>
-              {demoMode ? 'Start Enrollment (Demo)' : 'Connect Phantom & Begin'}
-            </button>
-            {!demoMode && isMobileBrowser() && (
-              <div style={styles.mobileHint}>
-                On iPad or iPhone, this will open the Phantom in-app browser if Safari cannot inject the wallet.
-              </div>
-            )}
-            {statusMsg && <div style={styles.status}>{statusMsg}</div>}
-          </div>
-        
-        </div>
-
-
-        
-        <div style={{ display: phase === 'capturing' ? 'flex' : 'none', width: '100%', justifyContent: 'center' }}>
-
-          <div key="capturing" style={ui.card}>
-            <div style={styles.sampleBadge}>
-              Sample {sampleCount + 1} of {REQUIRED_SAMPLES}
-            </div>
-            <h2 style={ui.title}>Type the phrase</h2>
-            <div style={ui.phrase}>"{PHRASE}"</div>
-            <p style={styles.hint}>Press Enter when done</p>
-
-            {showMobileSensorUi && (
-              <div style={styles.sensorInfoCard}>
-                <div style={styles.sensorInfoText}>
-                  Motion Sensors: <span style={{ color: sensorsEnabled ? '#00ff88' : '#ffb366' }}>{sensorsEnabled ? 'Enabled' : 'Optional'}</span>
-                </div>
-                {!sensorsEnabled && (
-                  <div style={styles.sensorInfoSubtext}>
-                    Enable for stronger mobile protection.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showMobileSensorUi && showEnableSensors && (
-              <div style={styles.sensorActionBox}>
-                <div style={styles.sensorActionText}>
-                  Tap to enable motion sensors on this device.
-                </div>
-                <button
-                  style={styles.sensorEnableBtn}
-                  onClick={requestSensors}
-                  disabled={sensorRequesting}
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 z-10 relative">
+        <AnimatePresence mode="wait">
+          
+          {/* Intro Phase */}
+          {phase === 'intro' && (
+            <motion.div 
+              key="intro"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-6">Enroll Your Identity</h2>
+              <p className="text-white/90 text-sm md:text-base leading-relaxed mb-8">
+                You'll type <strong className="text-[#00FF4D]">"{PHRASE}"</strong> three times.<br />
+                Your keystroke rhythm becomes your cryptographic identity.
+              </p>
+              <ul className="text-left text-white/80 text-xs md:text-sm leading-loose mb-8 list-disc pl-6 space-y-2 max-w-md mx-auto">
+                <li>Type naturally — don't try to be consistent</li>
+                <li>Your behavioural DNA is captured, never stored</li>
+                <li>The Fuzzy Extractor outputs the wallet key and pushes Helper Data to Solana</li>
+              </ul>
+              
+              <div className="max-w-md mx-auto">
+                <input
+                  className="w-full p-4 mb-6 bg-white/5 border border-white/20 rounded-xl text-white text-sm outline-none font-sans focus:border-[#00FF4D] transition-colors"
+                  type="email"
+                  value={backupEmail}
+                  onChange={(e) => setBackupEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && connectWallet()}
+                  placeholder="Recovery email for duress alerts"
+                  autoComplete="email"
+                />
+                <button 
+                  className="w-full bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-widest py-4 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]" 
+                  onClick={connectWallet}
                 >
-                  {sensorRequesting ? 'Enabling Sensors...' : 'Enable Sensors'}
+                  {demoMode ? 'Start Enrollment (Demo)' : 'Connect Phantom & Begin'}
                 </button>
               </div>
-            )}
-
-            {showMobileSensorUi && sensorDenied && (
-              <div style={styles.sensorWarning}>
-                {sensorBlockedHint}
-              </div>
-            )}
-
-            <input
-              ref={inputRef}
-              style={ui.typeInput}
-              value={currentInput}
-              onChange={handleTyping}
-              onKeyDown={keystroke.onKeyDown}
-              onKeyUp={handleKeyUp}
-              onMouseMove={mouse.onMouseMove}
-              onMouseDown={mouse.onMouseDown}
-              onMouseUp={mouse.onMouseUp}
-              onTouchStart={mouse.onTouchStart}
-              onTouchMove={mouse.onTouchMove}
-              onTouchEnd={mouse.onTouchEnd}
-              placeholder="Start typing..."
-              autoComplete="off"
-              spellCheck={false}
-            />
-
-            {graphData.length > 2 && (
-              <div style={ui.graphContainer}>
-                <div style={styles.graphLabel}>KEYSTROKE EKG — LIVE</div>
-                <svg width={graphWidth} height={120} style={{ display: 'block', overflow: 'visible' }}>
-                  <polyline
-                    fill="none"
-                    stroke="#00ff88"
-                    strokeWidth="1.5"
-                    points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * graphWidth},${120 - (Math.min(d.hold, 500) / 500) * 120}`).join(' ')}
-                  />
-                  <polyline
-                    fill="none"
-                    stroke="#0088ff"
-                    strokeWidth="1"
-                    points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * graphWidth},${120 - (Math.min(d.flight, 500) / 500) * 120}`).join(' ')}
-                  />
-                </svg>
-                <div style={ui.graphLegend}>
-                  <span style={{ color: '#00ff88' }}>■ Hold Time</span>
-                  <span style={{ color: '#0088ff' }}>■ Flight Time</span>
+              
+              {!demoMode && isMobileBrowser() && (
+                <div className="text-white/60 text-xs mt-6 max-w-sm mx-auto leading-relaxed">
+                  On iPad or iPhone, this will open the Phantom in-app browser if Safari cannot inject the wallet.
                 </div>
-              </div>
-            )}
+              )}
+              {statusMsg && <div className="text-white/80 text-xs font-mono mt-6">{statusMsg}</div>}
+            </motion.div>
+          )}
 
-            {showMobileSensorUi && gyroGraphData.length > 0 && (
-              <div style={ui.graphContainer}>
-                <div style={styles.graphLabel}>GYROSCOPE ACTIVITY — LIVE</div>
-                <svg width={graphWidth} height={120} style={{ display: 'block', overflow: 'visible' }}>
-                  <polyline
-                    fill="none"
-                    stroke="#ff6600"
-                    strokeWidth="1.5"
-                    points={gyroGraphData.map((d, i) => `${(i / Math.max(1, gyroGraphData.length - 1)) * graphWidth},${120 - (Math.min(Math.max(d.mag, -10), 10) + 10) / 20 * 120}`).join(' ')}
-                  />
-                </svg>
-                <div style={ui.graphLegend}>
-                  <span style={{ color: '#ff6600' }}>■ Gyro Magnitude</span>
+          {/* Capturing Phase */}
+          {phase === 'capturing' && (
+            <motion.div 
+              key="capturing"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`sample-${sampleCount}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex justify-center mb-8">
+                    <div className="bg-white/5 border border-white/10 text-white/50 text-[10px] font-mono font-bold px-4 py-1.5 rounded-full uppercase tracking-[0.2em]">
+                      Capture {sampleCount + 1} / {REQUIRED_SAMPLES}
+                    </div>
+                  </div>
+                  
+                  <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4">Replicate Signature</h2>
+                  
+                  <div className="text-xl md:text-2xl text-white/70 tracking-widest font-mono mb-12">
+                    "{PHRASE}"
+                  </div>
+
+                  <div className="relative max-w-md mx-auto mb-8">
+                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#00FF4D]/50 font-mono text-xl pointer-events-none">
+                      &gt;
+                    </div>
+                    <input
+                      ref={inputRef}
+                      autoFocus
+                      className="w-full bg-black border-2 border-white/10 focus:border-[#00FF4D] rounded-xl text-[#00FF4D] text-lg md:text-xl text-left pl-14 pr-6 py-6 outline-none tracking-widest font-mono transition-all placeholder:text-white/10 shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)] focus:shadow-[0_0_20px_rgba(0,255,77,0.1)]"
+                      value={currentInput}
+                      onChange={handleTyping}
+                      onKeyDown={keystroke.onKeyDown}
+                      onKeyUp={handleKeyUp}
+                      onMouseMove={mouse.onMouseMove}
+                      onMouseDown={mouse.onMouseDown}
+                      onMouseUp={mouse.onMouseUp}
+                      onTouchStart={mouse.onTouchStart}
+                      onTouchMove={mouse.onTouchMove}
+                      onTouchEnd={mouse.onTouchEnd}
+                      placeholder=""
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </div>
+
+                  <p className="text-white/80 text-[10px] font-mono uppercase tracking-[0.2em] mb-4">Press Enter ⏎ to submit</p>
+
+                  <div className="h-[140px] w-full max-w-md mx-auto relative">
+                    <AnimatePresence>
+                      {graphData.length > 2 && (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-center"
+                        >
+                          <div className="text-white/60 text-[9px] tracking-[0.3em] mb-4 font-mono uppercase text-left">KEYSTROKE EKG — LIVE</div>
+                          <svg width={graphWidth > 400 ? 400 : graphWidth} height={80} className="block overflow-visible w-full">
+                            <polyline
+                              fill="none"
+                              stroke="#00FF4D"
+                              strokeWidth="1.5"
+                              points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * (graphWidth > 400 ? 400 : graphWidth)},${80 - (Math.min(d.hold, 500) / 500) * 80}`).join(' ')}
+                            />
+                            <polyline
+                              fill="none"
+                              stroke="#0088ff"
+                              strokeWidth="1"
+                              points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * (graphWidth > 400 ? 400 : graphWidth)},${80 - (Math.min(d.flight, 500) / 500) * 80}`).join(' ')}
+                            />
+                          </svg>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {statusMsg && <div className="text-white/80 text-xs font-mono mt-6">{statusMsg}</div>}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {/* Processing Phase */}
+          {phase === 'processing' && (
+            <motion.div 
+              key="processing"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <div className="text-5xl text-[#00FF4D] animate-spin mb-8 inline-block">⬡</div>
+              <h2 className="font-display text-3xl font-bold tracking-tight mb-4">Pushing to Solana</h2>
+              <p className="text-white/80 text-sm font-mono mb-4">{statusMsg}</p>
+              {walletAddr && <div className="text-white/60 text-xs font-mono break-all max-w-md mx-auto bg-white/5 p-4 rounded-xl">{walletAddr}</div>}
+            </motion.div>
+          )}
+
+          {/* Done Phase */}
+          {phase === 'done' && (
+            <motion.div 
+              key="done"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <div className="text-6xl text-[#00FF4D] mb-6">✓</div>
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4">Identity Enrolled</h2>
+              <p className="text-white/90 text-sm md:text-base leading-relaxed mb-8 max-w-md mx-auto">
+                Your Behavioural DNA was successfully converted to a Wallet Key via the Fuzzy Extractor.
+              </p>
+              
+              {secretKey && (
+                <div className="bg-black p-6 rounded-xl border border-[#00FF4D]/30 max-w-md mx-auto mb-8 text-left break-all shadow-[0_0_15px_rgba(0,255,77,0.1)]">
+                  <strong className="block text-white/90 mb-3 tracking-[0.2em] font-mono text-[10px] uppercase">GENERATED SECRET KEY</strong>
+                  <div className="text-[#00FF4D] text-xs font-mono leading-relaxed">{secretKey}</div>
                 </div>
+              )}
+              
+              <div className="flex flex-col items-center gap-6 mt-2">
+                {txHash && (
+                  <a
+                    className="text-[#00FF4D] text-xs font-mono hover:underline tracking-[1px]"
+                    href={`https://explorer.solana.com/tx/${txHash}?cluster=devnet`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View on Solana Explorer ↗
+                  </a>
+                )}
+                
+                <button 
+                  className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,77,0.3)]" 
+                  onClick={() => navigate('/auth')}
+                >
+                  Authenticate Now →
+                </button>
               </div>
-            )}
+            </motion.div>
+          )}
 
-            {showMobileSensorUi && !motionAvailable && gyroGraphData.length === 0 && (
-              <div style={ui.graphContainer}>
-                <div style={styles.graphLabel}>GYROSCOPE ACTIVITY — NOT AVAILABLE</div>
-                <div style={{ color: '#666', fontSize: 12, padding: '20px' }}>
-                  Motion sensors not accessible. Grant permission or use a compatible device for enhanced security.
-                </div>
-              </div>
-            )}
-
-            {showMobileSensorUi && showSensorDebug && touchGraphData.length > 0 && (
-              <div style={ui.graphContainer}>
-                <div style={styles.graphLabel}>TOUCH PRESSURE — LIVE</div>
-                <svg width={graphWidth} height={120} style={{ display: 'block', overflow: 'visible' }}>
-                  <polyline
-                    fill="none"
-                    stroke="#ff00ff"
-                    strokeWidth="1.5"
-                    points={touchGraphData.map((d, i) => `${(i / Math.max(1, touchGraphData.length - 1)) * graphWidth},${120 - d.pressure * 120}`).join(' ')}
-                  />
-                </svg>
-                <div style={ui.graphLegend}>
-                  <span style={{ color: '#ff00ff' }}>■ Touch Pressure</span>
-                </div>
-              </div>
-            )}
-
-            {showMobileSensorUi && (
-              <div style={styles.sensorMiniCard}>
-                <div style={styles.sensorMiniTitle}>SENSOR STATUS</div>
-                <div style={ui.sensorMiniRow}>
-                  <span style={styles.sensorMiniKey}>Health</span>
-                  <span style={styles.sensorMiniVal}>{sensorHealthText}</span>
-                </div>
-                <div style={ui.sensorMiniRow}>
-                  <span style={styles.sensorMiniKey}>Permissions</span>
-                  <span style={styles.sensorMiniVal}>{sensorsEnabled ? 'Granted' : 'Not granted'}</span>
-                </div>
-                <div style={ui.sensorMiniRow}>
-                  <span style={styles.sensorMiniKey}>Gyro Activity</span>
-                  <span style={styles.sensorMiniVal}>{sensorActivityLive ? 'Live' : 'Waiting for movement'}</span>
-                </div>
-              </div>
-            )}
-
-            {statusMsg && <div style={styles.status}>{statusMsg}</div>}
-
-            {currentInput === PHRASE && (
-                <button style={ui.ctaSmall} onClick={captureComplete}>
-                Capture Sample {sampleCount + 1} →
-              </button>
-            )}
-          </div>
-        
-        </div>
-
-
-        
-        <div style={{ display: phase === 'processing' ? 'flex' : 'none', width: '100%', justifyContent: 'center' }}>
-
-          <div key="processing" style={ui.card}>
-            <div style={styles.spinner}>⬡</div>
-            <h2 style={ui.title}>Pushing to Solana</h2>
-            <p style={styles.status}>{statusMsg}</p>
-            {walletAddr && <div style={styles.addr}>{walletAddr}</div>}
-          </div>
-        
-        </div>
-
-
-        
-        <div style={{ display: phase === 'done' ? 'flex' : 'none', width: '100%', justifyContent: 'center' }}>
-
-          <div key="done" style={ui.card}>
-            <div style={styles.successIcon}>✓</div>
-            <h2 style={ui.title}>Identity Enrolled</h2>
-            <p style={ui.desc}>Your Behavioural DNA was successfully converted to a Wallet Key via Fuzzy Extractor.</p>
-            {secretKey && (
-              <div style={{ background: '#111', padding: '16px', borderRadius: '8px', wordBreak: 'break-all', color: '#00ff88', fontSize: '13px', margin: '20px 0', border: '1px solid #00ff8844' }}>
-                <strong style={{ display: 'block', color: '#fff', marginBottom: '8px', letterSpacing: '2px', fontSize: '11px' }}>GENERATED SECRET KEY</strong>
-                {secretKey}
-              </div>
-            )}
-            {txHash && (
-              <a
-                style={styles.etherscanLink}
-                href={`https://explorer.solana.com/tx/${txHash}?cluster=devnet`}
-                target="_blank"
-                rel="noreferrer"
+          {/* Error Phase */}
+          {phase === 'error' && (
+            <motion.div 
+              key="error"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4 text-red-500">Something went wrong</h2>
+              <p className="text-white/80 text-sm font-mono mb-8 max-w-md mx-auto">{statusMsg}</p>
+              <button 
+                className="bg-white text-black font-mono text-xs font-bold uppercase tracking-widest py-3 px-8 rounded-full transition-transform hover:scale-105" 
+                onClick={() => { setPhase('intro'); setSampleCount(0); setSamples([]); }}
               >
-                View on Solana Explorer ↗
-              </a>
-            )}
-            <div style={styles.actions}>
-              <button style={ui.cta} onClick={() => navigate('/auth')}>
-                Authenticate Now →
+                Try Again
               </button>
-            </div>
-          </div>
-        
-        </div>
-
-
-        
-        <div style={{ display: phase === 'error' ? 'flex' : 'none', width: '100%', justifyContent: 'center' }}>
-
-          <div key="error" style={ui.card}>
-            <h2 style={{ ...ui.title, color: '#ff4444' }}>Something went wrong</h2>
-            <p style={styles.status}>{statusMsg}</p>
-            <button style={ui.cta} onClick={() => { setPhase('intro'); setSampleCount(0); setSamples([]); }}>
-              Try Again
-            </button>
-          </div>
-        
-        </div>
-
-      </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 }
-
-const styles = {
-  root: { minHeight: '100vh', background: '#050508', color: '#fff', fontFamily: "'Inter', system-ui, sans-serif" },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  back: { background: 'none', border: 'none', color: '#00FF4D', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase' },
-  step: { color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.3em', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase' },
-  container: { display: 'flex', justifyContent: 'center', padding: '60px 24px' },
-  card: { width: '100%', maxWidth: 560, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', backdropFilter: 'blur(20px)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' },
-  title: { fontSize: 28, fontWeight: 300, margin: '0 0 16px', letterSpacing: '-0.03em', fontFamily: "'Syne', sans-serif", color: '#fff' },
-  desc: { color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, marginBottom: 32, fontSize: 14 },
-  phrase: { fontSize: 20, color: '#00FF4D', margin: '24px 0', letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace", background: 'rgba(0,255,77,0.06)', padding: '16px', borderRadius: 10, border: '1px solid rgba(0,255,77,0.15)' },
-  hint: { color: 'rgba(255,255,255,0.25)', fontSize: 12, marginBottom: 24, letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace" },
-  steps: { textAlign: 'left', color: 'rgba(255,255,255,0.35)', fontSize: 13, lineHeight: 2.2, marginBottom: 40, paddingLeft: 20 },
-  cta: { background: '#00FF4D', color: '#000', border: 'none', padding: '14px 36px', fontSize: 11, fontWeight: 800, letterSpacing: '0.15em', cursor: 'pointer', borderRadius: 100, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', boxShadow: '0 8px 32px rgba(0,255,77,0.25)', transition: 'all 0.2s' },
-  ctaSmall: { background: '#00FF4D', color: '#000', border: 'none', padding: '10px 28px', fontSize: 11, fontWeight: 800, cursor: 'pointer', borderRadius: 100, marginTop: 16, letterSpacing: '0.12em', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', boxShadow: '0 6px 24px rgba(0,255,77,0.2)' },
-  sensorInfoCard: { marginBottom: 16, background: 'rgba(0,255,77,0.04)', border: '1px solid rgba(0,255,77,0.1)', borderRadius: 8, padding: '10px 12px', textAlign: 'left' },
-  sensorInfoText: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-  sensorInfoSubtext: { color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 },
-  sensorActionBox: { marginBottom: 16, background: 'rgba(0,255,77,0.06)', border: '1px solid rgba(0,255,77,0.15)', borderRadius: 8, padding: '10px 12px' },
-  sensorActionText: { color: 'rgba(0,255,77,0.8)', fontSize: 12, marginBottom: 8 },
-  sensorEnableBtn: { background: '#00FF4D', color: '#000', border: 'none', padding: '8px 16px', borderRadius: 100, cursor: 'pointer', fontSize: 11, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em' },
-  sensorWarning: { marginBottom: 16, background: 'rgba(255,45,85,0.06)', border: '1px solid rgba(255,45,85,0.15)', borderRadius: 8, padding: '10px 12px', color: 'rgba(255,160,150,0.8)', fontSize: 12, textAlign: 'left', lineHeight: 1.5 },
-  recoveryInput: { width: '100%', padding: '13px 16px', marginBottom: 16, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: "'Inter', sans-serif", transition: 'border-color 0.2s' },
-  mobileHint: { color: 'rgba(255,255,255,0.25)', fontSize: 12, lineHeight: 1.6, marginTop: 14 },
-  typeInput: { width: '100%', padding: '16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,255,77,0.2)', borderRadius: 10, color: '#00FF4D', fontSize: 18, textAlign: 'center', outline: 'none', boxSizing: 'border-box', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", transition: 'border-color 0.2s' },
-  graphContainer: { marginTop: 32, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px' },
-  graphLabel: { color: 'rgba(255,255,255,0.2)', fontSize: 9, letterSpacing: '0.3em', marginBottom: 8, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  graphLegend: { display: 'flex', gap: 20, justifyContent: 'center', fontSize: 11, marginTop: 8, fontFamily: "'JetBrains Mono', monospace" },
-  sensorMiniCard: { marginTop: 20, background: 'rgba(0,255,77,0.03)', border: '1px solid rgba(0,255,77,0.1)', borderRadius: 10, padding: '12px 14px', textAlign: 'left' },
-  sensorMiniTitle: { color: '#00FF4D', fontSize: 9, letterSpacing: '0.25em', marginBottom: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  sensorMiniRow: { display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, marginBottom: 4 },
-  sensorMiniKey: { color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 },
-  sensorMiniVal: { color: 'rgba(0,255,77,0.8)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 },
-  sampleBadge: { background: 'rgba(0,255,77,0.1)', border: '1px solid rgba(0,255,77,0.2)', color: '#00FF4D', display: 'inline-block', padding: '5px 16px', borderRadius: 100, fontSize: 10, letterSpacing: '0.2em', marginBottom: 24, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase' },
-  status: { color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '16px 0', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' },
-  addr: { color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 8, wordBreak: 'break-all', fontFamily: "'JetBrains Mono', monospace" },
-  spinner: { fontSize: 48, color: '#00FF4D', animation: 'spin 2s linear infinite', marginBottom: 24 },
-  successIcon: { fontSize: 56, color: '#00FF4D', marginBottom: 16 },
-  etherscanLink: { color: '#00FF4D', fontSize: 12, display: 'block', marginBottom: 32, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' },
-  actions: { display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 },
-};

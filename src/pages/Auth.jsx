@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, detectStress, classifyScore, quantizeBiometrics } from '../hooks/behaviouralEngine';
 import { authenticate as authenticateFuzzyExtractor } from '../hooks/fuzzyExtractor';
 import { useViewport } from '../hooks/useViewport';
@@ -280,15 +280,16 @@ export default function Auth() {
   };
 
   const scoreColor = score === null ? '#fff'
-    : score > 0.70 ? '#00ff88'
+    : score > 0.70 ? '#00FF4D'
     : score >= 0.60 ? '#ffaa00'
     : '#ff4444';
 
   const resultMessages = {
-    authenticated: { icon: '✓', label: 'IDENTITY VERIFIED', color: '#00ff88' },
+    authenticated: { icon: '✓', label: 'IDENTITY VERIFIED', color: '#00FF4D' },
     duress: { icon: '⚠', label: 'DURESS DETECTED', color: '#ffaa00' },
     rejected: { icon: '✗', label: 'IDENTITY REJECTED', color: '#ff4444' },
   };
+
   const motionNeedsGesture = sensorDiag.motionPermission === 'requires-user-gesture';
   const orientationNeedsGesture = sensorDiag.orientationPermission === 'requires-user-gesture';
   const insecureContext =
@@ -314,55 +315,82 @@ export default function Auth() {
     : sensorDiag.platform === 'android' && sensorDiag.browser === 'chrome'
       ? 'Sensor access is blocked. In Chrome Android, allow Motion sensors in Site settings, then reload.'
       : 'Sensor access is blocked. Enable motion/orientation access in browser settings, then reload.';
-  const ui = {
-    header: isMobile ? { ...styles.header, padding: '16px 18px' } : styles.header,
-    container: isMobile ? { ...styles.container, padding: '28px 12px 40px' } : styles.container,
-    card: isMobile ? { ...styles.card, borderRadius: 10, padding: '28px 18px' } : styles.card,
-    title: isMobile ? { ...styles.title, fontSize: 22, margin: '0 0 12px' } : styles.title,
-    desc: isMobile ? { ...styles.desc, fontSize: 14, lineHeight: 1.65 } : styles.desc,
-    phrase: isMobile ? { ...styles.phrase, fontSize: 18, margin: '18px 0', lineHeight: 1.4 } : styles.phrase,
-    cta: isMobile ? { ...styles.cta, width: '100%', padding: '13px 18px', fontSize: 12, letterSpacing: 1.2 } : styles.cta,
-    typeInput: isMobile ? { ...styles.typeInput, fontSize: 16, padding: '14px 12px', letterSpacing: 1 } : styles.typeInput,
-    graphContainer: isMobile ? { ...styles.graphContainer, padding: '12px' } : styles.graphContainer,
-    scoreNum: isMobile ? { ...styles.scoreNum, fontSize: 48 } : styles.scoreNum,
-    barLabels: isMobile ? { ...styles.barLabels, fontSize: 9, letterSpacing: 1 } : styles.barLabels,
-    stressBar: isMobile ? { ...styles.stressBar, flexWrap: 'wrap', gap: 8, justifyContent: 'center' } : styles.stressBar,
-  };
 
   return (
-    <div style={styles.root}>
-      <div style={ui.header}>
-        <button style={styles.back} onClick={() => navigate('/')}>← VAULTLESS</button>
-        <div style={styles.step}>AUTHENTICATION</div>
-      </div>
+    <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
+      
+      {/* Header */}
+      <header className="absolute top-0 left-0 w-full p-8 md:px-12 flex items-center justify-between z-20">
+        <button 
+          onClick={() => navigate('/')}
+          className="text-xs font-bold tracking-[0.2em] hover:opacity-70 transition-opacity"
+        >
+          ← VAULTLESS
+        </button>
+      </header>
 
-      <div style={ui.container}>
-        <div style={ui.card}>
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 z-10 relative">
+        <AnimatePresence mode="wait">
+          
+          {/* Ready Phase */}
           {phase === 'ready' && (
-            <div key="ready">
-              <h2 style={ui.title}>Authenticate</h2>
+            <motion.div 
+              key="ready"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-6">Authenticate</h2>
+              
               {!isEnrolled && !demoMode && (
-                <div style={styles.warning}>⚠ No enrollment found. <button style={styles.inlineLink} onClick={() => navigate('/enroll')}>Enroll first →</button></div>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm mb-8">
+                  ⚠ No enrollment found. <button className="underline hover:text-red-300 ml-2" onClick={() => navigate('/enroll')}>Enroll first →</button>
+                </div>
               )}
-              <p style={ui.desc}>Type the same phrase you enrolled with.</p>
-              <div style={ui.phrase}>"{PHRASE}"</div>
-              <button style={ui.cta} onClick={() => setPhase('typing')}>Begin Authentication</button>
-            </div>
+              
+              <p className="text-white/90 text-sm md:text-base leading-relaxed mb-8">
+                Type the same phrase you enrolled with.
+              </p>
+              
+              <div className="text-2xl md:text-3xl text-white/70 tracking-widest font-mono mb-10 opacity-70">
+                "{PHRASE}"
+              </div>
+              
+              <button 
+                className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]" 
+                onClick={() => setPhase('typing')}
+              >
+                Begin Authentication →
+              </button>
+            </motion.div>
           )}
 
+          {/* Typing Phase */}
           {phase === 'typing' && (
-            <div key="typing">
-              <h2 style={ui.title}>Type the phrase</h2>
-              <div style={ui.phrase}>"{PHRASE}"</div>
-              <p style={styles.hint}>Press Enter when done</p>
+            <motion.div 
+              key="typing"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4">Provide Signature</h2>
+              
+              <div className="text-xl md:text-2xl text-white/70 tracking-widest font-mono mb-12">
+                "{PHRASE}"
+              </div>
 
               {showMobileSensorUi && (
-                <div style={styles.sensorInfoCard}>
-                  <div style={styles.sensorInfoText}>
-                    Motion Sensors: <span style={{ color: sensorsEnabled ? '#00ff88' : '#ffb366' }}>{sensorsEnabled ? 'Enabled' : 'Optional'}</span>
+                <div className="mb-6 bg-white/5 border border-white/10 rounded-xl p-4 text-left max-w-md mx-auto">
+                  <div className="text-white/90 text-xs font-mono">
+                    Motion Sensors: <span className={sensorsEnabled ? 'text-[#00FF4D]' : 'text-orange-400'}>{sensorsEnabled ? 'Enabled' : 'Optional'}</span>
                   </div>
                   {!sensorsEnabled && (
-                    <div style={styles.sensorInfoSubtext}>
+                    <div className="text-white/60 text-[10px] mt-2 font-sans">
                       Enable them to match your enrollment capture more closely.
                     </div>
                   )}
@@ -370,12 +398,10 @@ export default function Auth() {
               )}
 
               {showMobileSensorUi && showEnableSensors && (
-                <div style={styles.sensorActionBox}>
-                  <div style={styles.sensorActionText}>
-                    Tap to enable motion sensors on this device before verifying.
-                  </div>
+                <div className="mb-6 bg-[#00FF4D]/5 border border-[#00FF4D]/15 rounded-xl p-4 max-w-md mx-auto text-center">
+                  <div className="text-[#00FF4D]/80 text-xs mb-3 font-mono">Tap to enable motion sensors on this device.</div>
                   <button
-                    style={styles.sensorEnableBtn}
+                    className="bg-[#00FF4D] text-black border-none px-6 py-2.5 rounded-full cursor-pointer text-[10px] font-bold font-mono uppercase tracking-widest transition-transform hover:scale-105"
                     onClick={requestSensors}
                     disabled={sensorRequesting}
                   >
@@ -385,146 +411,153 @@ export default function Auth() {
               )}
 
               {showMobileSensorUi && sensorDenied && (
-                <div style={styles.sensorWarning}>
+                <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400/90 text-xs text-left max-w-md mx-auto">
                   {sensorBlockedHint}
                 </div>
               )}
 
-              <input
-                ref={inputRef}
-                style={ui.typeInput}
-                value={currentInput}
-                onChange={e => setCurrentInput(e.target.value)}
-                onKeyDown={keystroke.onKeyDown}
-                onKeyUp={handleKeyUp}
-                onMouseMove={mouse.onMouseMove}
-                onMouseDown={mouse.onMouseDown}
-                onMouseUp={mouse.onMouseUp}
-                onTouchStart={mouse.onTouchStart}
-                onTouchMove={mouse.onTouchMove}
-                onTouchEnd={mouse.onTouchEnd}
-                placeholder="Start typing..."
-                autoComplete="off"
-                spellCheck={false}
-              />
-
-              {graphData.length > 2 && (
-                <div style={ui.graphContainer}>
-                  <div style={styles.graphLabel}>DNA PATTERN FORMING</div>
-                  <LineChart width={graphWidth} height={100} data={graphData}>
-                    <Line type="monotone" dataKey="hold" stroke="#00ff88" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="flight" stroke="#0088ff" strokeWidth={1} dot={false} isAnimationActive={false} />
-                  </LineChart>
+              <div className="relative max-w-md mx-auto mb-8">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#00FF4D]/50 font-mono text-xl pointer-events-none">
+                  &gt;
                 </div>
-              )}
+                <input
+                  ref={inputRef}
+                  autoFocus
+                  className="w-full bg-black border-2 border-white/10 focus:border-[#00FF4D] rounded-xl text-[#00FF4D] text-lg md:text-xl text-left pl-14 pr-6 py-6 outline-none tracking-widest font-mono transition-all placeholder:text-white/10 shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)] focus:shadow-[0_0_20px_rgba(0,255,77,0.1)]"
+                  value={currentInput}
+                  onChange={e => setCurrentInput(e.target.value)}
+                  onKeyDown={keystroke.onKeyDown}
+                  onKeyUp={handleKeyUp}
+                  onMouseMove={mouse.onMouseMove}
+                  onMouseDown={mouse.onMouseDown}
+                  onMouseUp={mouse.onMouseUp}
+                  onTouchStart={mouse.onTouchStart}
+                  onTouchMove={mouse.onTouchMove}
+                  onTouchEnd={mouse.onTouchEnd}
+                  placeholder=""
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
+
+              <p className="text-white/80 text-[10px] font-mono uppercase tracking-[0.2em] mb-4">Press Enter ⏎ to submit</p>
+
+              <div className="h-[140px] w-full max-w-md mx-auto relative">
+                <AnimatePresence>
+                  {graphData.length > 2 && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-center"
+                    >
+                      <div className="text-white/60 text-[9px] tracking-[0.3em] mb-4 font-mono uppercase text-left">DNA PATTERN FORMING</div>
+                      <svg width={graphWidth > 400 ? 400 : graphWidth} height={80} className="block overflow-visible w-full">
+                        <polyline
+                          fill="none"
+                          stroke="#00FF4D"
+                          strokeWidth="1.5"
+                          points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * (graphWidth > 400 ? 400 : graphWidth)},${80 - (Math.min(d.hold, 500) / 500) * 80}`).join(' ')}
+                        />
+                        <polyline
+                          fill="none"
+                          stroke="#0088ff"
+                          strokeWidth="1"
+                          points={graphData.map((d, i) => `${(i / Math.max(1, graphData.length - 1)) * (graphWidth > 400 ? 400 : graphWidth)},${80 - (Math.min(d.flight, 500) / 500) * 80}`).join(' ')}
+                        />
+                      </svg>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {currentInput.trim() === PHRASE && (
-                <button style={ui.cta} onClick={processAuth}>Verify Identity →</button>
+                <button 
+                  className="mt-8 bg-white text-black font-mono text-[10px] font-bold uppercase tracking-widest py-3 px-8 rounded-full transition-transform hover:scale-105" 
+                  onClick={processAuth}
+                >
+                  Verify Identity →
+                </button>
               )}
-            </div>
+            </motion.div>
           )}
 
+          {/* Scoring / Result Phase */}
           {(phase === 'scoring' || phase === 'result') && (
-            <div key="scoring">
-              <div style={styles.scoreDisplay}>
-                <div style={{ ...ui.scoreNum, color: scoreColor }}>
+            <motion.div 
+              key="scoring"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+            >
+              <div className="mb-12">
+                <div className="font-display text-7xl font-bold tracking-tight mb-2" style={{ color: scoreColor, transition: 'color 0.3s' }}>
                   {score !== null ? (score * 100).toFixed(1) + '%' : '—'}
                 </div>
-                <div style={styles.scoreLabel}>SIMILARITY SCORE</div>
+                <div className="text-white/50 text-[10px] tracking-[0.3em] font-mono uppercase">SIMILARITY SCORE</div>
               </div>
 
               {/* Score bar */}
-              <div style={styles.barContainer}>
-                <div style={{ ...styles.bar, width: `${(score || 0) * 100}%`, background: scoreColor, transition: 'width 0.05s ease' }} />
-                <div style={{ ...styles.barMarker, left: '60%' }} title="Duress threshold" />
-                <div style={{ ...styles.barMarker, left: '70%', borderColor: '#00ff88' }} title="Auth threshold" />
-              </div>
-              <div style={ui.barLabels}>
-                <span style={{ color: '#ff4444' }}>REJECTED</span>
-                <span style={{ color: '#ffaa00' }}>DURESS</span>
-                <span style={{ color: '#00ff88' }}>AUTH</span>
+              <div className="max-w-md mx-auto mb-10">
+                <div className="relative h-2 bg-white/10 rounded-full mb-3">
+                  <div className="absolute top-0 left-0 h-full rounded-full transition-all duration-300" style={{ width: `${(score || 0) * 100}%`, backgroundColor: scoreColor }} />
+                  <div className="absolute top-[-4px] bottom-[-4px] w-[2px] bg-white/20" style={{ left: '60%' }} title="Duress threshold" />
+                  <div className="absolute top-[-4px] bottom-[-4px] w-[2px] border-r-2 border-[#00FF4D]/50" style={{ left: '70%' }} title="Auth threshold" />
+                </div>
+                <div className="flex justify-between text-[9px] tracking-[0.2em] font-mono uppercase">
+                  <span className="text-red-500">REJECTED</span>
+                  <span className="text-orange-400">DURESS</span>
+                  <span className="text-[#00FF4D]">AUTH</span>
+                </div>
               </div>
 
               {stressScore > 0 && (
-                <div style={ui.stressBar}>
-                  <span style={styles.stressLabel}>STRESS LEVEL</span>
-                  <div style={styles.stressTrack}>
-                    <div style={{ ...styles.stressFill, width: `${stressScore}%`, background: stressScore > 60 ? '#ffaa00' : '#333' }} />
+                <div className="max-w-md mx-auto flex items-center gap-4 mb-8">
+                  <span className="text-white/40 text-[9px] tracking-[0.2em] font-mono uppercase whitespace-nowrap">STRESS LEVEL</span>
+                  <div className="flex-1 h-1 bg-white/10 rounded-full">
+                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${stressScore}%`, backgroundColor: stressScore > 60 ? '#ffaa00' : '#333' }} />
                   </div>
-                  <span style={{ color: stressScore > 60 ? '#ffaa00' : '#555', fontSize: 11 }}>{stressScore.toFixed(0)}%</span>
+                  <span className="text-[10px] font-mono" style={{ color: stressScore > 60 ? '#ffaa00' : '#555' }}>{stressScore.toFixed(0)}%</span>
                 </div>
               )}
 
               {result && (
-                <div style={{ color: resultMessages[result].color, fontSize: 20, marginTop: 24, letterSpacing: 3 }}>
+                <div className="font-display text-2xl font-bold tracking-[1px] uppercase mt-8 mb-6" style={{ color: resultMessages[result].color }}>
                   {resultMessages[result].icon} {resultMessages[result].label}
                 </div>
               )}
 
               {result === 'authenticated' && recoveredKey && (
-                <div style={{ background: '#111', padding: '16px', borderRadius: '8px', wordBreak: 'break-all', color: '#00ff88', fontSize: '13px', margin: '20px 0', border: '1px solid #00ff8844' }}>
-                  <strong style={{ display: 'block', color: '#fff', marginBottom: '8px', letterSpacing: '2px', fontSize: '11px' }}>RECOVERED WALLET KEY</strong>
-                  {recoveredKey}
+                <div className="bg-black p-6 rounded-xl border border-[#00FF4D]/30 max-w-md mx-auto my-6 text-left break-all shadow-[0_0_15px_rgba(0,255,77,0.1)]">
+                  <strong className="block text-white/90 mb-3 tracking-[0.2em] font-mono text-[10px] uppercase">RECOVERED WALLET KEY</strong>
+                  <div className="text-[#00FF4D] text-xs font-mono leading-relaxed">{recoveredKey}</div>
                 </div>
               )}
 
               {result === 'rejected' && (
-                <div style={{ background: '#220000', padding: '16px', borderRadius: '8px', color: '#ff4444', fontSize: '13px', margin: '20px 0', border: '1px solid #ff444444' }}>
-                  <strong style={{ display: 'block', color: '#fff', marginBottom: '8px', letterSpacing: '2px', fontSize: '11px' }}>FUZZY EXTRACTOR FAILED</strong>
-                  Too much variance. The secret key could not be recovered.
+                <div className="bg-[#220000] p-6 rounded-xl border border-red-500/30 max-w-md mx-auto my-6 text-left shadow-[0_0_15px_rgba(255,68,68,0.1)]">
+                  <strong className="block text-white/90 mb-3 tracking-[0.2em] font-mono text-[10px] uppercase text-red-500">FUZZY EXTRACTOR FAILED</strong>
+                  <div className="text-red-400/80 text-xs font-mono leading-relaxed">Too much variance. The secret key could not be recovered.</div>
                 </div>
               )}
 
-              {statusMsg && <div style={styles.status}>{statusMsg}</div>}
+              {statusMsg && <div className="text-white/60 text-xs font-mono mt-6 mb-8">{statusMsg}</div>}
 
               {result === 'rejected' && (
-                <button style={{ ...ui.cta, marginTop: 24 }} onClick={() => { setPhase('ready'); setCurrentInput(''); keystroke.reset(); mouse.reset(); setScore(null); setResult(null); }}>
+                <button 
+                  className="bg-white text-black font-mono text-[10px] font-bold uppercase tracking-widest py-3 px-8 rounded-full transition-transform hover:scale-105" 
+                  onClick={() => { setPhase('ready'); setCurrentInput(''); keystroke.reset(); mouse.reset(); setScore(null); setResult(null); }}
+                >
                   Try Again
                 </button>
               )}
-            </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+
+        </AnimatePresence>
+      </main>
     </div>
   );
 }
-
-const styles = {
-  root: { minHeight: '100vh', background: '#050508', color: '#fff', fontFamily: "'Inter', system-ui, sans-serif" },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  back: { background: 'none', border: 'none', color: '#00FF4D', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase' },
-  step: { color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.3em', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase' },
-  container: { display: 'flex', justifyContent: 'center', padding: '60px 24px' },
-  card: { width: '100%', maxWidth: 560, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '48px 40px', textAlign: 'center', backdropFilter: 'blur(20px)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' },
-  title: { fontSize: 28, fontWeight: 300, margin: '0 0 16px', letterSpacing: '-0.03em', fontFamily: "'Syne', sans-serif", color: '#fff' },
-  desc: { color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, marginBottom: 24, fontSize: 14 },
-  phrase: { fontSize: 20, color: '#00FF4D', margin: '24px 0', letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace", background: 'rgba(0,255,77,0.06)', padding: '16px', borderRadius: 10, border: '1px solid rgba(0,255,77,0.15)' },
-  hint: { color: 'rgba(255,255,255,0.25)', fontSize: 12, marginBottom: 24, letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace" },
-  cta: { background: '#00FF4D', color: '#000', border: 'none', padding: '14px 36px', fontSize: 11, fontWeight: 800, letterSpacing: '0.15em', cursor: 'pointer', borderRadius: 100, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', boxShadow: '0 8px 32px rgba(0,255,77,0.25)', transition: 'all 0.2s' },
-  typeInput: { width: '100%', padding: '16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,255,77,0.2)', borderRadius: 10, color: '#00FF4D', fontSize: 18, textAlign: 'center', outline: 'none', boxSizing: 'border-box', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", marginBottom: 24, transition: 'border-color 0.2s' },
-  graphContainer: { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '16px', marginBottom: 24 },
-  graphLabel: { color: 'rgba(255,255,255,0.2)', fontSize: 9, letterSpacing: '0.3em', marginBottom: 8, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  scoreDisplay: { marginBottom: 32 },
-  scoreNum: { fontSize: 72, fontWeight: 700, lineHeight: 1, transition: 'color 0.3s', fontFamily: "'Syne', sans-serif", letterSpacing: '-0.05em' },
-  scoreLabel: { color: 'rgba(255,255,255,0.2)', fontSize: 9, letterSpacing: '0.3em', marginTop: 8, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  barContainer: { position: 'relative', height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 4, marginBottom: 8, overflow: 'visible' },
-  bar: { height: '100%', borderRadius: 4, transition: 'background 0.3s' },
-  barMarker: { position: 'absolute', top: -5, width: 2, height: 16, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 1 },
-  barLabels: { display: 'flex', justifyContent: 'space-between', fontSize: 9, letterSpacing: '0.2em', marginBottom: 24, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  stressBar: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 },
-  stressLabel: { color: 'rgba(255,255,255,0.25)', fontSize: 9, letterSpacing: '0.2em', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' },
-  stressTrack: { flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 },
-  stressFill: { height: '100%', borderRadius: 2, transition: 'width 0.3s, background 0.3s' },
-  status: { color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 16, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' },
-  warning: { background: 'rgba(255,45,85,0.08)', border: '1px solid rgba(255,45,85,0.2)', borderRadius: 10, padding: '12px 16px', color: 'rgba(255,120,140,0.9)', fontSize: 13, marginBottom: 24 },
-  inlineLink: { background: 'none', border: 'none', color: '#00FF4D', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: "'Inter', sans-serif" },
-  sensorInfoCard: { marginBottom: 16, background: 'rgba(0,255,77,0.04)', border: '1px solid rgba(0,255,77,0.1)', borderRadius: 8, padding: '10px 12px', textAlign: 'left' },
-  sensorInfoText: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-  sensorInfoSubtext: { color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 },
-  sensorActionBox: { marginBottom: 16, background: 'rgba(0,255,77,0.06)', border: '1px solid rgba(0,255,77,0.15)', borderRadius: 8, padding: '10px 12px', textAlign: 'left' },
-  sensorActionText: { color: 'rgba(0,255,77,0.8)', fontSize: 12, marginBottom: 8 },
-  sensorEnableBtn: { background: '#00FF4D', color: '#000', border: 'none', padding: '8px 16px', borderRadius: 100, cursor: 'pointer', fontSize: 11, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em' },
-  sensorWarning: { marginBottom: 16, background: 'rgba(255,45,85,0.06)', border: '1px solid rgba(255,45,85,0.15)', borderRadius: 8, padding: '10px 12px', color: 'rgba(255,160,150,0.8)', fontSize: 12, textAlign: 'left', lineHeight: 1.5 },
-};
-
