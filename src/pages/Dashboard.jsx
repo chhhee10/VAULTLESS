@@ -9,7 +9,7 @@ const PHRASE = 'Secure my account';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { secretKey, helperData, solanaLinks, clearEnrollment } = useVaultless();
+  const { secretKey, setSecretKey, helperData, solanaLinks } = useVaultless();
   
   const [bioWallet, setBioWallet] = useState(null);
   const [balance, setBalance] = useState(0);
@@ -27,7 +27,7 @@ export default function Dashboard() {
   
   useEffect(() => {
     if (!secretKey) {
-      navigate('/');
+      navigate('/gmail');
       return;
     }
     try {
@@ -125,7 +125,7 @@ export default function Dashboard() {
     <div style={s.root}>
       <div style={s.header}>
         <div style={s.logo}>VAULTLESS</div>
-        <button style={s.logoutBtn} onClick={() => { clearEnrollment(); navigate('/'); }}>Sign Out</button>
+        <button style={s.logoutBtn} onClick={() => { setSecretKey(null); navigate('/gmail'); }}>Sign Out</button>
       </div>
 
       <div style={s.container}>

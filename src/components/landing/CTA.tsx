@@ -14,6 +14,7 @@ const CTA = () => {
 
   const footerY = useTransform(scrollYProgress, [0.48, 0.88], [160, 0]);
   const footerOpacity = useTransform(scrollYProgress, [0.48, 0.72], [0, 1]);
+  const footerPointerEvents = useTransform(scrollYProgress, (v) => v < 0.48 ? "none" : "auto");
 
   return (
     <section ref={sectionRef} className="relative w-full min-h-[125vh] bg-white overflow-hidden">
@@ -64,7 +65,7 @@ const CTA = () => {
 
       <motion.footer
         className="absolute bottom-0 left-0 z-20 flex min-h-screen w-full flex-col justify-end overflow-hidden bg-[#f7f7f2] px-6 pb-[68vh] text-black md:px-12 md:pb-[66vh]"
-        style={{ y: footerY, opacity: footerOpacity }}
+        style={{ y: footerY, opacity: footerOpacity, pointerEvents: footerPointerEvents }}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,255,77,0.18),_transparent_42%)]"></div>
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white to-transparent"></div>
