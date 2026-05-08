@@ -44,8 +44,9 @@ const GlassShape = () => {
 
 const Scene = () => {
   const { viewport } = useThree();
-  // Responsive font size
-  const fontSize = Math.min(viewport.width / 4, 3);
+  // Responsive font size: On mobile (portrait), we make it significantly larger relative to width so it spills out of the edges beautifully. On desktop, it stays exactly the same.
+  const isMobile = viewport.width < viewport.height;
+  const fontSize = isMobile ? (viewport.width / 2.5) : Math.min(viewport.width / 4, 3);
   
   return (
     <>
@@ -57,6 +58,7 @@ const Scene = () => {
       {/* Background Text */}
       <group position={[0, 0, -2]}>
         <Text
+          font="/fonts/Syne.ttf"
           fontSize={fontSize}
           letterSpacing={-0.05}
           color="black"
@@ -67,6 +69,7 @@ const Scene = () => {
           SECURE
         </Text>
         <Text
+          font="/fonts/Syne.ttf"
           fontSize={fontSize}
           letterSpacing={-0.05}
           color="black"
@@ -77,6 +80,7 @@ const Scene = () => {
           WITH
         </Text>
         <Text
+          font="/fonts/Syne.ttf"
           fontSize={fontSize}
           letterSpacing={-0.05}
           color="black"

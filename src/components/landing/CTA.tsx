@@ -20,7 +20,7 @@ const CTA = () => {
     <section ref={sectionRef} className="relative w-full min-h-[125vh] bg-white overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,255,157,0.05),_transparent_50%)]"></div>
 
-      <div className="sticky top-0 z-10 flex h-[62vh] items-center justify-center">
+      <div className="sticky top-0 z-10 flex h-[62vh] min-h-[350px] flex-col items-center justify-center pt-24">
         <motion.div
           className="relative text-center max-w-3xl px-6"
           initial={{ opacity: 0, y: 30 }}
@@ -69,34 +69,27 @@ const CTA = () => {
       </div>
 
       <motion.footer
-        className="absolute bottom-0 left-0 z-20 flex min-h-screen w-full flex-col justify-end overflow-hidden bg-[#f7f7f2] px-6 pb-[68vh] text-black md:px-12 md:pb-[66vh]"
+        className="absolute bottom-0 left-0 z-20 flex min-h-screen w-full flex-col justify-start overflow-hidden bg-[#f7f7f2] px-6 pt-24 pb-8 text-black md:px-12 md:pt-32"
         style={{ y: footerY, opacity: footerOpacity, pointerEvents: footerPointerEvents }}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,255,77,0.18),_transparent_42%)]"></div>
-        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white to-transparent"></div>
 
-        <div className="relative z-10 grid gap-10 border-t border-black/10 pt-8 md:grid-cols-[1.2fr_1fr_1fr] md:gap-8">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between gap-6 md:gap-8 border-t border-black/10 pt-8">
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-[#00FF4D]">
               Vaultless
             </p>
-            <h2 className="mt-4 max-w-2xl font-display text-5xl font-bold leading-none tracking-[-0.08em] md:text-7xl">
+            <h2 className="mt-2 md:mt-4 max-w-2xl font-display text-4xl sm:text-5xl font-bold leading-tight tracking-[-0.08em] md:text-7xl">
               NO VAULT.<br />NO PASSWORD.<br />JUST YOU.
             </h2>
           </div>
 
-          <div className="font-mono text-xs font-bold uppercase leading-loose tracking-widest text-black/60">
+          <div className="font-mono text-[10px] sm:text-xs font-bold uppercase leading-loose tracking-widest text-black/60 md:text-right">
             <p className="text-black">Access</p>
             <p>Behavioral signature</p>
             <p>Zero stored secrets</p>
             <p>Keys vanish after use</p>
-          </div>
-
-          <div className="font-mono text-xs font-bold uppercase leading-loose tracking-widest text-black/60 md:text-right">
-            <p>Demo sign up</p>
-            <p>Security model</p>
-            <p>Contact</p>
-            <p className="pt-6 text-black/35">© 2026 VAULTLESS</p>
+            <p className="pt-2 md:pt-6 text-black/35">© 2026 VAULTLESS</p>
           </div>
         </div>
       </motion.footer>
