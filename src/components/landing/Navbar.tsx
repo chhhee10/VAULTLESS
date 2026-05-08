@@ -4,7 +4,7 @@ import { useVaultless } from '../../lib/VaultlessContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { setDemoMode } = useVaultless();
+  const { setDemoMode, clearEnrollment } = useVaultless();
   const { scrollYProgress } = useScroll();
 
   // We animate the center text when the scroll is in the last 15% of the page
@@ -32,8 +32,9 @@ const Navbar = () => {
           <button 
             className="transition-colors cursor-pointer hover:opacity-70"
             onClick={() => {
+              clearEnrollment();
               setDemoMode(false);
-              navigate('/gmail');
+              navigate('/enroll');
             }}
           >
             SIGN UP

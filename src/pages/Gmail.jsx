@@ -1,123 +1,237 @@
 import { useNavigate } from 'react-router-dom';
 import { useVaultless } from '../lib/VaultlessContext';
 
-export default function Gmail() {
+export default function WalletAccess() {
   const navigate = useNavigate();
-  const { isEnrolled } = useVaultless();
+  const { isEnrolled, demoMode } = useVaultless();
 
   return (
     <div style={s.root}>
+      {/* Ambient glow */}
+      <div style={s.glow} />
 
+      {/* Header */}
       <div style={s.header}>
-        <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico" width="32" height="32" style={{ marginRight: 8, borderRadius: '50%' }} alt="Gmail" />
-        <span style={s.wordmark}>
-          <span style={{ color: '#4285F4' }}>G</span>
-          <span style={{ color: '#EA4335' }}>m</span>
-          <span style={{ color: '#FBBC05' }}>a</span>
-          <span style={{ color: '#4285F4' }}>i</span>
-          <span style={{ color: '#34A853' }}>l</span>
-        </span>
+        <button style={s.backBtn} onClick={() => navigate('/')}>← VAULTLESS</button>
       </div>
 
-      <div style={s.card}>
-        <div style={s.logoWrap}>
-          <div style={s.logoCircle}>
-            <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico" width="40" height="40" alt="Gmail" />
+      <div style={s.container}>
+        <div style={s.card}>
+
+          {/* Icon */}
+          <div style={s.iconWrap}>
+            <span style={s.icon}>⬡</span>
           </div>
+
+          <h1 style={s.title}>Access Your Wallet</h1>
+          <p style={s.subtitle}>
+            {demoMode
+              ? 'Demo mode — your biometric session will not touch the chain.'
+              : 'Authenticate with your behavioural signature to unlock your wallet.'}
+          </p>
+
+          {demoMode && (
+            <div style={s.demoBadge}>DEMO MODE</div>
+          )}
+
+          <div style={s.divider} />
+
+          <div style={s.actions}>
+            {isEnrolled ? (
+              <>
+                <button
+                  id="authenticate-btn"
+                  style={s.primaryBtn}
+                  onClick={() => navigate('/auth')}
+                >
+                  Authenticate →
+                </button>
+                <p style={s.hint}>Already enrolled — type your phrase to unlock.</p>
+              </>
+            ) : (
+              <>
+                <button
+                  id="enroll-btn"
+                  style={s.primaryBtn}
+                  onClick={() => navigate('/enroll')}
+                >
+                  Enroll Identity →
+                </button>
+                <p style={s.hint}>First time? Set up your biometric signature.</p>
+              </>
+            )}
+          </div>
+
+          <div style={s.securityRow}>
+            <span style={s.chip}>⬡ Zero-Knowledge</span>
+            <span style={s.chip}>⬡ On-Chain</span>
+            <span style={s.chip}>⬡ Anti-Coercion</span>
+          </div>
+
         </div>
 
-        <h2 style={s.title}>Sign in</h2>
-        <p style={s.subtitle}>to continue to Gmail</p>
-
-        <input style={s.input} placeholder="Email or phone" readOnly />
-
-        <div style={s.divider}>
-          <div style={s.line} />
-          <span style={s.dividerText}>or sign in with</span>
-          <div style={s.line} />
-        </div>
-
-        <button
-          style={s.btn}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          onClick={() => navigate(isEnrolled ? '/auth' : '/enroll')}
-        >
-          <span style={s.hex}>⬡</span>
-          Sign in with VAULTLESS
-        </button>
-
-        <p style={s.tagline}>Passwordless · Unstealable · Anti-Coercion</p>
-
-        <div style={s.footer}>
-          <a href="#" style={s.link}>Help</a>
-          <a href="#" style={s.link}>Privacy</a>
-          <a href="#" style={s.link}>Terms</a>
-        </div>
+        {/* Bottom note */}
+        <p style={s.footnote}>
+          Your key is derived from how you type — not stored anywhere.
+        </p>
       </div>
-
-      <style>{`
-        input::placeholder { color: #bec0c4; }
-        input:focus { border-color: #1a73e8 !important; outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
-      `}</style>
     </div>
   );
 }
 
 const s = {
   root: {
-    minHeight: '100vh', background: '#fff',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    fontFamily: "'Google Sans', Roboto, Arial, sans-serif",
+    minHeight: '100vh',
+    background: '#050508',
+    color: '#fff',
+    fontFamily: "'Inter', system-ui, sans-serif",
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  glow: {
+    position: 'fixed',
+    top: '35%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 700,
+    height: 700,
+    background: 'radial-gradient(circle, rgba(0,255,77,0.07) 0%, transparent 65%)',
+    pointerEvents: 'none',
   },
   header: {
-    width: '100%', padding: '16px 24px',
-    display: 'flex', alignItems: 'center',
+    padding: '20px 40px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
-  wordmark: {
-    fontSize: 22, fontWeight: 400, color: '#5f6368',
-    fontFamily: "Arial, sans-serif", letterSpacing: 0.3,
+  backBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#00FF4D',
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.15em',
+    fontFamily: "'JetBrains Mono', monospace",
+    textTransform: 'uppercase',
+  },
+  container: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px 24px',
+    gap: 20,
   },
   card: {
-    marginTop: 60, width: '100%', maxWidth: 440,
-    border: '1px solid #dadce0', borderRadius: 12,
-    padding: '48px 44px 36px', textAlign: 'center',
-    boxShadow: '0 4px 6px rgba(32,33,36,0.1), 0 1px 3px rgba(32,33,36,0.08), 0 8px 24px rgba(32,33,36,0.06)',
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: '44px 40px 36px',
+    textAlign: 'center',
+    backdropFilter: 'blur(20px)',
+    boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
   },
-  logoWrap: { display: 'flex', justifyContent: 'center', marginBottom: 24 },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: '50%',
-    background: '#f1f3f4',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  iconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: '50%',
+    background: 'rgba(0,255,77,0.08)',
+    border: '1px solid rgba(0,255,77,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 24px',
   },
-  title: { fontSize: 26, fontWeight: 400, color: '#202124', margin: '0 0 10px' },
-  subtitle: { fontSize: 16, color: '#5f6368', margin: '0 0 32px', fontWeight: 400 },
-  input: {
-    width: '100%', padding: '14px 16px',
-    border: '1px solid #dadce0', borderRadius: 6,
-    fontSize: 16, color: '#202124',
-    boxSizing: 'border-box', background: '#fff',
-    fontFamily: "'Google Sans', Roboto, Arial, sans-serif",
-    marginBottom: 28, transition: 'border-color 0.2s',
+  icon: {
+    fontSize: 28,
+    color: '#00FF4D',
   },
-  divider: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 },
-  line: { flex: 1, height: 1, background: '#e8eaed' },
-  dividerText: { color: '#5f6368', fontSize: 13, whiteSpace: 'nowrap' },
-  btn: {
-    width: '100%', padding: '13px 16px',
-    background: '#0d0d0d', color: '#00ff88',
-    border: 'none', borderRadius: 6,
-    fontSize: 14, fontWeight: 700, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: 10, letterSpacing: '0.06em', marginBottom: 14,
-    fontFamily: "'Courier New', monospace",
-    transition: 'opacity 0.2s', textTransform: 'uppercase',
+  title: {
+    fontSize: 26,
+    fontWeight: 300,
+    margin: '0 0 10px',
+    letterSpacing: '-0.03em',
+    fontFamily: "'Syne', sans-serif",
+    color: '#fff',
   },
-  hex: { fontSize: 18, color: '#00ff88', lineHeight: 1 },
-  tagline: { color: '#9aa0a6', fontSize: 12, margin: '0 0 28px', letterSpacing: '0.02em' },
-  footer: {
-    borderTop: '1px solid #e8eaed', paddingTop: 18,
-    display: 'flex', justifyContent: 'center', gap: 28,
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    margin: '0 0 20px',
+    lineHeight: 1.6,
   },
-  link: { color: '#5f6368', fontSize: 12, textDecoration: 'none' },
+  demoBadge: {
+    display: 'inline-block',
+    background: 'rgba(0,255,77,0.1)',
+    border: '1px solid rgba(0,255,77,0.25)',
+    color: '#00FF4D',
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: '0.2em',
+    padding: '5px 14px',
+    borderRadius: 100,
+    fontFamily: "'JetBrains Mono', monospace",
+    marginBottom: 20,
+    textTransform: 'uppercase',
+  },
+  divider: {
+    height: 1,
+    background: 'rgba(255,255,255,0.06)',
+    margin: '24px 0',
+  },
+  actions: {
+    marginBottom: 28,
+  },
+  primaryBtn: {
+    width: '100%',
+    padding: '15px',
+    background: '#00FF4D',
+    color: '#000',
+    border: 'none',
+    borderRadius: 100,
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: '0.15em',
+    cursor: 'pointer',
+    fontFamily: "'JetBrains Mono', monospace",
+    textTransform: 'uppercase',
+    boxShadow: '0 8px 32px rgba(0,255,77,0.25)',
+    marginBottom: 12,
+    transition: 'all 0.2s',
+  },
+  hint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+    margin: 0,
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  securityRow: {
+    display: 'flex',
+    gap: 8,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    paddingTop: 20,
+  },
+  chip: {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.3)',
+    padding: '5px 12px',
+    borderRadius: 100,
+    fontSize: 10,
+    fontFamily: "'JetBrains Mono', monospace",
+    letterSpacing: '0.05em',
+  },
+  footnote: {
+    color: 'rgba(255,255,255,0.18)',
+    fontSize: 12,
+    fontFamily: "'JetBrains Mono', monospace",
+    letterSpacing: '0.05em',
+    textAlign: 'center',
+  },
 };

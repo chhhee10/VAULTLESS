@@ -2,7 +2,7 @@ import { Connection, PublicKey, clusterApiUrl, Keypair, SystemProgram, Transacti
 import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
 
 // ── Paste your deployed Solana Program ID here ──
-export const PROGRAM_ID = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
+export const PROGRAM_ID = new PublicKey('32Ve1hyCBwPDg2Br2v16aV9hq5xAkquE5gYif9v4akb1');
 
 // We use the Devnet for the Hackathon
 export const NETWORK = clusterApiUrl('devnet');
