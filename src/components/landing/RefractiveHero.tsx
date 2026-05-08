@@ -22,8 +22,7 @@ const GlassShape = () => {
       {/* Hexagonal ring (torus with 6 tubular segments) */}
       <torusGeometry args={[1.5, 0.4, 64, 6]} />
       <MeshTransmissionMaterial
-        backside
-        backsideThickness={1}
+        backside={false}
         thickness={2}
         roughness={0.05}
         transmission={1}
@@ -32,11 +31,12 @@ const GlassShape = () => {
         anisotropy={0.1}
         distortion={0.5}
         distortionScale={0.5}
-        temporalDistortion={0.1}
+        temporalDistortion={0.0}
         clearcoat={1}
         attenuationDistance={0.5}
         attenuationColor="#ffffff"
         color="#ffffff"
+        resolution={256}
       />
     </mesh>
   );
@@ -91,7 +91,7 @@ const Scene = () => {
       <GlassShape />
 
       {/* Environment lighting to create beautiful glassy reflections */}
-      <Environment resolution={256}>
+      <Environment resolution={256} frames={1}>
         <group rotation={[-Math.PI / 4, -0.3, 0]}>
           <Lightformer intensity={20} rotation-x={Math.PI / 2} position={[0, 5, -9]} scale={[10, 10, 1]} />
           <Lightformer intensity={2} rotation-y={Math.PI / 2} position={[-5, 1, -1]} scale={[10, 2, 1]} />
@@ -106,7 +106,7 @@ const Scene = () => {
 const RefractiveHero = () => {
   return (
     <section className="relative w-full h-screen overflow-hidden">
-      <Canvas camera={{ position: [0, 0, 10], fov: 35 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [0, 0, 10], fov: 35 }} dpr={[1, 1.5]}>
         <Scene />
       </Canvas>
     </section>

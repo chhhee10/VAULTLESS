@@ -1,7 +1,11 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useVaultless } from '../../lib/VaultlessContext';
 
 const CTA = () => {
+  const navigate = useNavigate();
+  const { setDemoMode } = useVaultless();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -36,6 +40,10 @@ const CTA = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="rounded-full bg-black px-10 py-4 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-[0_18px_45px_rgba(0,0,0,0.18)] transition-all duration-300 hover:shadow-[0_22px_55px_rgba(0,0,0,0.28)]"
+              onClick={() => {
+                setDemoMode(true);
+                navigate('/gmail');
+              }}
             >
               TRY DEMO
             </motion.button>
@@ -43,6 +51,10 @@ const CTA = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="rounded-full bg-[#00FF4D] px-10 py-4 font-mono text-xs font-bold uppercase tracking-widest text-black shadow-[0_18px_45px_rgba(0,255,77,0.24)] transition-all duration-300 hover:shadow-[0_22px_55px_rgba(0,255,77,0.36)]"
+              onClick={() => {
+                setDemoMode(false);
+                navigate('/gmail');
+              }}
             >
               SIGN UP
             </motion.button>

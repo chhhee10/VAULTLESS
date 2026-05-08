@@ -1,7 +1,10 @@
-
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useVaultless } from '../../lib/VaultlessContext';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const { setDemoMode } = useVaultless();
   const { scrollYProgress } = useScroll();
 
   // We animate the center text when the scroll is in the last 15% of the page
@@ -16,12 +19,23 @@ const Navbar = () => {
   return (
     <>
       <nav className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-8 py-6 pointer-events-none">
-        {/* Left */}
         <div className="flex-1 pointer-events-auto flex items-center gap-6 text-xs font-mono font-bold tracking-widest text-black">
-          <button className="transition-colors cursor-pointer hover:opacity-70">
+          <button 
+            className="transition-colors cursor-pointer hover:opacity-70"
+            onClick={() => {
+              setDemoMode(true);
+              navigate('/gmail');
+            }}
+          >
             DEMO
           </button>
-          <button className="transition-colors cursor-pointer hover:opacity-70">
+          <button 
+            className="transition-colors cursor-pointer hover:opacity-70"
+            onClick={() => {
+              setDemoMode(false);
+              navigate('/gmail');
+            }}
+          >
             SIGN UP
           </button>
         </div>

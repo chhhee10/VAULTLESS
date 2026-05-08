@@ -25,6 +25,10 @@ export default {
           500: '#6a6a7a',
         },
         white: '#e8e8f0',
+        background: '#FFFFFF',
+        accent: '#00FF4D',
+        duress: '#FF0000',
+        rejection: '#000000'
       },
       boxShadow: {
         'glow-green': '0 0 20px rgba(0,255,136,0.3)',
@@ -36,6 +40,8 @@ export default {
         grotesk: ['Space Grotesk', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Syne', 'sans-serif'],
       },
     },
   },

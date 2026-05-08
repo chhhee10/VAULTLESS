@@ -101,3 +101,22 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+  }
+  .bg-glow {
+    box-shadow: 0 0 40px rgba(0, 255, 157, 0.2);
+  }
+  .border-glow {
+    box-shadow: inset 0 0 20px rgba(0, 255, 157, 0.2), 0 0 20px rgba(0, 255, 157, 0.2);
+  }
+  
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
