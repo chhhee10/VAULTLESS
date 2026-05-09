@@ -273,6 +273,20 @@ export async function sendSol(senderKeypair, recipientAddressStr, amountSol) {
   return signature;
 }
 
+export async function sendSolWithPhantom(recipientAddressStr, amountSol) {
+  const provider = getSolanaProvider();
+  if (!provider || !provider.publicKey) {
+    throw new Error('Wallet not connected. Please connect Phantom first.');
+  }
+  const recipient = new PublicKey(recipientAddressStr);
+  const instruction = SystemProgram.transfer({
+    fromPubkey: provider.publicKey,
+    toPubkey: recipient,
+    lamports: amountSol * LAMPORTS_PER_SOL,
+  });
+  return await sendTransaction(instruction);
+}
+
 // ── Demo mode stubs ──
 export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 

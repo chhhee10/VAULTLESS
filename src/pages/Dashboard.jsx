@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVaultless } from '../lib/VaultlessContext';
-import { getWalletBalance, requestAirdrop, sendSol, getWalletFromSecretKey } from '../lib/solana';
-import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
-import { authenticate as authenticateFuzzyExtractor } from '../hooks/fuzzyExtractor';
+import { getWalletBalance, sendSolWithPhantom } from '../lib/solana';
+import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, classifyScore, detectStress } from '../hooks/behaviouralEngine';
 import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode, sessionActive, clearEnrollment } = useVaultless();
+  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode, sessionActive, clearEnrollment, enrollmentVector, enrollmentKeystroke, enrollmentMouse } = useVaultless();
   
   const [bioWallet, setBioWallet] = useState(null);
   const [balance, setBalance] = useState(0);
-  const [isAirdropping, setIsAirdropping] = useState(false);
+
   
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -60,22 +59,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleAirdrop = async () => {
-    if (!bioWallet) return;
-    if (demoMode) { setTxStatus('Airdrop not available in demo mode.'); setTimeout(() => setTxStatus(''), 2500); return; }
-    setIsAirdropping(true);
-    setTxStatus('Requesting Devnet SOL...');
-    try {
-      await requestAirdrop(bioWallet.publicKey.toString());
-      setTxStatus('Airdrop successful!');
-      refreshBalance(bioWallet.publicKey.toString());
-      setTimeout(() => setTxStatus(''), 3000);
-    } catch(e) {
-      setTxStatus('Airdrop failed. Devnet might be rate-limited.');
-      setTimeout(() => setTxStatus(''), 4000);
-    }
-    setIsAirdropping(false);
-  };
+
 
   const startSend = () => {
     if (!recipient || !amount || isNaN(amount)) {
@@ -109,23 +93,29 @@ export default function Dashboard() {
     }
     
     const liveVector = buildCombinedVector(kData, mData);
-    const liveDiscrete = quantizeBiometrics(liveVector);
     const expectedPubKey = bioWallet.publicKey.toString(); 
     
-    const recoveredKey = authenticateFuzzyExtractor(liveDiscrete, helperData, expectedPubKey);
+    let simScore = cosineSimilarity(liveVector, enrollmentVector, kData, enrollmentKeystroke, mData, enrollmentMouse || null);
+    if (demoMode) {
+      simScore = Math.min(0.99, Math.max(0.01, simScore + (Math.random() * 0.02 - 0.01)));
+    }
+
+    const isStress = detectStress(kData, enrollmentKeystroke);
+    const classification = classifyScore(simScore, isStress);
     
-    if (recoveredKey) {
-      setTxStatus('Identity verified! Signing transaction...');
+    if (classification === 'authenticated') {
+      setTxStatus('Identity verified! Prompting Phantom wallet...');
       try {
-        const kp = getWalletFromSecretKey(recoveredKey);
-        const sig = await sendSol(kp, recipient, parseFloat(amount));
+        const sig = await sendSolWithPhantom(recipient, parseFloat(amount));
         setTxStatus(`Sent successfully! TX: ${sig.slice(0, 8)}...`);
         setRecipient('');
         setAmount('');
-        refreshBalance(kp.publicKey.toString());
+        refreshBalance(expectedPubKey);
       } catch(err) {
         setTxStatus('Transaction failed: ' + err.message);
       }
+    } else if (classification === 'duress') {
+      setTxStatus('Security breach detected (Duress). Transaction aborted.');
     } else {
       setTxStatus('Authentication rejected: DNA mismatch.');
     }
@@ -200,15 +190,7 @@ export default function Dashboard() {
                 {bioWallet.publicKey.toString()}
               </div>
               
-              <div className="block">
-                <button 
-                  className="bg-white text-black px-8 py-4 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] font-bold transition-transform hover:scale-[1.02] active:scale-95 w-full md:w-auto"
-                  onClick={handleAirdrop} 
-                  disabled={isAirdropping}
-                >
-                  {isAirdropping ? 'Airdropping...' : 'Request Devnet Airdrop ↓'}
-                </button>
-              </div>
+
             </motion.div>
 
             {/* Send Crypto Card */}
