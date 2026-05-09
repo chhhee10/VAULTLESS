@@ -82,10 +82,10 @@ export default function WalletAccess() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 z-10 relative pb-32">
+      <main className="flex-1 flex flex-col items-center justify-center px-8 py-6 md:p-6 z-10 relative pb-32">
 
         {/* Wallet Card */}
-        <div className="w-full max-w-sm bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 shadow-2xl relative">
+        <div className="w-full max-w-sm bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-8 shadow-2xl relative">
 
           {/* Floating 3D Fox/Hexagon */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 pointer-events-none">
@@ -99,7 +99,7 @@ export default function WalletAccess() {
           </div>
 
           <div className="mt-20 text-center text-white">
-            <h1 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-3 whitespace-nowrap">Access Wallet</h1>
+            <h1 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-3">Access Wallet</h1>
             <p className="text-white/80 text-sm font-mono mb-8 leading-relaxed">
               {demoMode
                 ? 'Demo mode active. Biometrics will not touch the chain.'
