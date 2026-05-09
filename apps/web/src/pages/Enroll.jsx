@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
-import { enroll as enrollFuzzyExtractor } from '../hooks/fuzzyExtractor';
+import { enroll as enrollFuzzyExtractor } from '@vaultless/core';
 import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
 import { isMobileBrowser } from '../lib/ethereum';

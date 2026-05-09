@@ -1,32 +1,8 @@
 import { useState, useRef } from 'react';
 import { Accelerometer, Gyroscope } from 'expo-sensors';
+import { mean, std, zNormalize, pearsonCorrelation, cosineSimilarity } from '@vaultless/core';
 
-// Math Helpers
-function mean(arr) { if (!arr || arr.length === 0) return 0; return arr.reduce((a, b) => a + b, 0) / arr.length; }
-function std(arr) {
-  if (!arr || arr.length < 2) return 0;
-  const m = mean(arr);
-  const variance = arr.reduce((acc, val) => acc + Math.pow(val - m, 2), 0) / arr.length;
-  return Math.sqrt(variance);
-}
-function zNormalize(arr) {
-  if (!arr || arr.length === 0) return [];
-  const m = mean(arr);
-  const s = std(arr) || 1;
-  return arr.map(x => (x - m) / s);
-}
-function pearsonCorrelation(x, y) {
-  if (!x || !y || x.length !== y.length || x.length === 0) return 0;
-  const mx = mean(x), my = mean(y);
-  let num = 0, denX = 0, denY = 0;
-  for (let i = 0; i < x.length; i++) {
-    const dx = x[i] - mx, dy = y[i] - my;
-    num += dx * dy;
-    denX += dx * dx;
-    denY += dy * dy;
-  }
-  return denX > 0 && denY > 0 ? num / Math.sqrt(denX * denY) : 0;
-}
+export { cosineSimilarity as compareMobileDNA };
 
 export function useMobileDNA() {
   const [active, setActive] = useState(false);
@@ -105,22 +81,4 @@ export function useMobileDNA() {
   return { startCapture, stopCapture, onKeyPress, extractVector, liveGyro };
 }
 
-export function compareMobileDNA(live, enrolled) {
-  if (!live || !enrolled) return 0;
-  
-  const flightPatternScore = pearsonCorrelation(live.flightTimesZ, enrolled.flightTimesZ);
-  const flightNorm = (flightPatternScore + 1) / 2;
 
-  const ratioSimilarity = (v1, v2) => {
-    if (v1 === 0 && v2 === 0) return 1;
-    if (v1 === 0 || v2 === 0) return 0;
-    return Math.min(v1, v2) / Math.max(v1, v2);
-  };
-
-  const accScore = ratioSimilarity(live.stdAccMag, enrolled.stdAccMag);
-  const gyroScore = ratioSimilarity(live.stdGyroMag, enrolled.stdGyroMag);
-
-  // 60% Typing Rhythm | 40% Phone Motion Signature
-  const finalScore = (flightNorm * 0.6) + (accScore * 0.2) + (gyroScore * 0.2);
-  return finalScore;
-}
