@@ -5,6 +5,7 @@ import { useVaultless } from '../lib/VaultlessContext';
 import { getWalletBalance, requestAirdrop, sendSol, getWalletFromSecretKey } from '../lib/solana';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
 import { authenticate as authenticateFuzzyExtractor } from '../hooks/fuzzyExtractor';
+import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 
@@ -140,6 +141,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black pb-24">
+      <BinaryGlitchBackground />
       
       {/* Header */}
       <header className="p-8 md:px-12 flex flex-col md:flex-row items-center justify-between z-10 relative gap-6 md:gap-0">

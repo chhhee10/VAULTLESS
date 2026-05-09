@@ -5,6 +5,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, MeshTransmissionMaterial } from '@react-three/drei';
 import { useMotionValue, useSpring } from 'framer-motion';
 import * as THREE from 'three';
+import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const InteractiveHexagon = ({ mouseX, mouseY }) => {
   const meshRef = useRef();
@@ -41,6 +42,7 @@ const InteractiveHexagon = ({ mouseX, mouseY }) => {
   );
 };
 
+
 export default function WalletAccess() {
   const navigate = useNavigate();
   const { isEnrolled, demoMode } = useVaultless();
@@ -67,6 +69,7 @@ export default function WalletAccess() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
+      <BinaryGlitchBackground />
 
       {/* Header */}
       <header className="p-8 md:px-12 flex items-center justify-between z-10 relative">
@@ -140,8 +143,8 @@ export default function WalletAccess() {
           </div>
         </div>
 
-        <p className="mt-12 text-black/50 text-[10px] font-mono uppercase tracking-widest font-bold">
-          Your key is derived from <span className="text-[#00FF4D] bg-black px-2 py-0.5 ml-1 rounded-sm">how you type</span>
+        <p className="mt-12 text-black/50 text-[10px] font-mono uppercase tracking-widest font-bold z-10">
+          Your key is derived from <span className="text-[#00FF4D] bg-black border border-[#00FF4D]/30 px-2 py-0.5 ml-1 rounded-sm">how you type</span>
         </p>
       </main>
     </div>

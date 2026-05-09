@@ -8,6 +8,7 @@ import { useVaultless } from '../lib/VaultlessContext';
 import { isMobileBrowser } from '../lib/ethereum';
 import { getActiveWalletAddress, authenticateOnChain, triggerDuressOnChain } from '../lib/solana';
 import { sendDuressAlert } from '../lib/duressAlert';
+import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 
@@ -101,6 +102,8 @@ export default function Auth() {
       setGraphData(data);
     }
   }, [keystroke.events]);
+
+
 
   const handleKeyUp = (e) => {
     keystroke.onKeyUp(e);
@@ -323,6 +326,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
+      <BinaryGlitchBackground />
       
       {/* Header */}
       <header className="absolute top-0 left-0 w-full p-8 md:px-12 flex items-center justify-between z-20">
@@ -365,7 +369,8 @@ export default function Auth() {
               </div>
               
               <button 
-                className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)]" 
+                autoFocus
+                className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(0,255,77,0.3)] outline-none" 
                 onClick={() => setPhase('typing')}
               >
                 Begin Authentication →
