@@ -31,12 +31,23 @@ const InteractiveHexagon = ({ mouseX, mouseY }) => {
   return (
     <mesh ref={meshRef} scale={0.7}>
       <torusGeometry args={[1.5, 0.4, 64, 6]} />
-      <meshPhysicalMaterial
+      <MeshTransmissionMaterial
+        backside
+        backsideThickness={2}
+        thickness={1.5}
+        chromaticAberration={0.1}
+        anisotropy={0.3}
+        distortion={0.1}
+        distortionScale={0.5}
+        temporalDistortion={0.05}
         color="#00FF4D"
-        metalness={0.1}
-        roughness={0.05}
-        clearcoat={1.0}
+        attenuationColor="#00FF4D"
+        attenuationDistance={2}
+        clearcoat={1}
         clearcoatRoughness={0.1}
+        roughness={0.1}
+        transmission={0.9}
+        ior={1.4}
       />
     </mesh>
   );
@@ -90,9 +101,10 @@ export default function WalletAccess() {
           {/* Floating 3D Fox/Hexagon */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 pointer-events-none">
             <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-              <ambientLight intensity={0.5} />
-              <directionalLight position={[10, 10, 10]} intensity={1.5} />
-              <directionalLight position={[-10, -10, -10]} intensity={0.5} color="#00FF4D" />
+              <ambientLight intensity={1.5} />
+              <directionalLight position={[10, 10, 10]} intensity={2.5} />
+              <directionalLight position={[-10, -10, -10]} intensity={1.5} color="#00FF4D" />
+              <pointLight position={[0, 0, -2]} intensity={8} color="#00FF4D" />
               <InteractiveHexagon mouseX={smoothMouseX} mouseY={smoothMouseY} />
               <Environment preset="city" />
             </Canvas>
