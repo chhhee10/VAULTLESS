@@ -7,6 +7,7 @@ import { useViewport } from '../hooks/useViewport';
 import { useVaultless } from '../lib/VaultlessContext';
 import { isMobileBrowser } from '../lib/ethereum';
 import { getActiveWalletAddress, registerIdentityOnChain } from '../lib/solana';
+import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 const REQUIRED_SAMPLES = 3;
@@ -136,6 +137,8 @@ export default function Enroll() {
     }, 200);
     return () => clearInterval(interval);
   }, [mouse.getPoints]);
+
+
 
   const connectWallet = async () => {
     const email = backupEmail.trim();
@@ -391,6 +394,7 @@ export default function Enroll() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black">
+      <BinaryGlitchBackground />
       
       {/* Header */}
       <header className="absolute top-0 left-0 w-full p-8 md:px-12 flex items-center justify-between z-20">
@@ -403,7 +407,7 @@ export default function Enroll() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 z-10 relative">
+      <main className="flex-1 flex flex-col items-center justify-center px-8 py-6 md:p-12 z-10 relative">
         <AnimatePresence mode="wait">
           
           {/* Intro Phase */}
@@ -414,9 +418,9 @@ export default function Enroll() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 shadow-2xl relative text-center text-white"
             >
-              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-6">Enroll Your Identity</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-6">Enroll Your Identity</h2>
               <p className="text-white/90 text-sm md:text-base leading-relaxed mb-8">
                 You'll type <strong className="text-[#00FF4D]">"{PHRASE}"</strong> three times.<br />
                 Your keystroke rhythm becomes your cryptographic identity.
@@ -462,7 +466,7 @@ export default function Enroll() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 shadow-2xl relative text-center text-white"
             >
               <AnimatePresence mode="wait">
                 <motion.div
@@ -478,7 +482,7 @@ export default function Enroll() {
                     </div>
                   </div>
                   
-                  <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4">Replicate Signature</h2>
+                  <h2 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-4">Replicate Signature</h2>
                   
                   <div className="text-xl md:text-2xl text-white/70 tracking-widest font-mono mb-12">
                     "{PHRASE}"
@@ -553,10 +557,10 @@ export default function Enroll() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-6 md:p-12 shadow-2xl relative text-center text-white"
             >
               <div className="text-5xl text-[#00FF4D] animate-spin mb-8 inline-block">⬡</div>
-              <h2 className="font-display text-3xl font-bold tracking-tight mb-4">Pushing to Solana</h2>
+              <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-4">Pushing to Solana</h2>
               <p className="text-white/80 text-sm font-mono mb-4">{statusMsg}</p>
               {walletAddr && <div className="text-white/60 text-xs font-mono break-all max-w-md mx-auto bg-white/5 p-4 rounded-xl">{walletAddr}</div>}
             </motion.div>
@@ -569,10 +573,10 @@ export default function Enroll() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 shadow-2xl relative text-center text-white"
             >
               <div className="text-6xl text-[#00FF4D] mb-6">✓</div>
-              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4">Identity Enrolled</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-4">Identity Enrolled</h2>
               <p className="text-white/90 text-sm md:text-base leading-relaxed mb-8 max-w-md mx-auto">
                 Your Behavioural DNA was successfully converted to a Wallet Key via the Fuzzy Extractor.
               </p>
@@ -597,7 +601,8 @@ export default function Enroll() {
                 )}
                 
                 <button 
-                  className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,77,0.3)]" 
+                  autoFocus
+                  className="w-full md:w-auto bg-[#00FF4D] hover:bg-[#00FF4D]/90 text-black font-mono text-xs md:text-sm font-bold uppercase tracking-[1px] py-4 px-10 rounded-full transition-transform hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,77,0.3)] outline-none" 
                   onClick={() => navigate('/auth')}
                 >
                   Authenticate Now →
@@ -612,9 +617,9 @@ export default function Enroll() {
               key="error"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-2xl relative text-center text-white"
+              className="w-full max-w-2xl bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 shadow-2xl relative text-center text-white"
             >
-              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4 text-red-500">Something went wrong</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-4 text-red-500">Something went wrong</h2>
               <p className="text-white/80 text-sm font-mono mb-8 max-w-md mx-auto">{statusMsg}</p>
               <button 
                 className="bg-white text-black font-mono text-xs font-bold uppercase tracking-widest py-3 px-8 rounded-full transition-transform hover:scale-105" 

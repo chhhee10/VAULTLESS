@@ -5,6 +5,7 @@ import { useVaultless } from '../lib/VaultlessContext';
 import { getWalletBalance, requestAirdrop, sendSol, getWalletFromSecretKey } from '../lib/solana';
 import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, quantizeBiometrics } from '../hooks/behaviouralEngine';
 import { authenticate as authenticateFuzzyExtractor } from '../hooks/fuzzyExtractor';
+import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 
@@ -140,30 +141,31 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f2] font-sans flex flex-col relative overflow-hidden text-black selection:bg-[#00FF4D] selection:text-black pb-24">
+      <BinaryGlitchBackground />
       
       {/* Header */}
-      <header className="p-8 md:px-12 flex flex-col md:flex-row items-center justify-between z-10 relative gap-6 md:gap-0">
+      <header className="p-6 md:p-8 md:px-12 flex flex-row items-start md:items-center justify-between z-10 relative gap-4 md:gap-0">
         <button 
           onClick={() => navigate('/')}
-          className="text-xs font-bold tracking-[0.2em] uppercase hover:opacity-70 transition-opacity"
+          className="text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase hover:opacity-70 transition-opacity mt-2 md:mt-0 whitespace-nowrap"
         >
           ← VAULTLESS
         </button>
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="grid grid-cols-2 md:flex justify-end items-center gap-2 md:gap-4 w-auto">
           <button 
-            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full border-2 border-black hover:bg-black hover:text-white transition-colors"
+            className="w-full md:w-auto text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-2 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-black hover:bg-black hover:text-white transition-colors whitespace-nowrap"
             onClick={() => { clearEnrollment(); navigate('/'); }}
           >
             Reset Identity
           </button>
           <button 
-            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full border-2 border-[#00FF4D] bg-[#00FF4D] text-black hover:bg-[#00FF4D]/80 transition-colors shadow-[4px_4px_0_0_#000]"
+            className="w-full md:w-auto text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-2 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-[#00FF4D] bg-[#00FF4D] text-black hover:bg-[#00FF4D]/80 transition-colors shadow-[0_0_10px_rgba(0,255,77,0.2)] md:shadow-[4px_4px_0_0_#000] whitespace-nowrap"
             onClick={() => navigate('/enroll')}
           >
             Re-enroll ↺
           </button>
           <button 
-            className="text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-5 py-2.5 rounded-full text-black hover:opacity-50 transition-opacity"
+            className="w-full md:w-auto col-span-2 md:col-span-1 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-2 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-black text-black hover:bg-black hover:text-white transition-colors whitespace-nowrap"
             onClick={() => { setSecretKey(null); navigate('/gmail'); }}
           >
             Sign Out
@@ -172,7 +174,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Grid */}
-      <main className="relative z-10 max-w-6xl mx-auto w-full px-6 md:px-12 pt-6">
+      <main className="relative z-10 max-w-6xl mx-auto w-full px-8 md:px-12 pt-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left Column */}
@@ -183,14 +185,14 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 text-white shadow-2xl relative"
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 text-white shadow-2xl relative"
             >
               <div className="flex justify-between items-center mb-8">
                 <span className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase">Biometric Wallet</span>
                 <span className="bg-[#00FF4D] text-black px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.2em] uppercase">Devnet</span>
               </div>
               
-              <div className="font-display text-5xl md:text-7xl font-bold tracking-[1px] uppercase mb-4">
+              <div className="font-display text-4xl md:text-7xl font-bold tracking-[1px] uppercase mb-4">
                 {balance.toFixed(4)} <span className="text-[#00FF4D]">SOL</span>
               </div>
               
@@ -214,9 +216,9 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-10 text-white shadow-2xl"
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-10 text-white shadow-2xl"
             >
-              <h3 className="font-display text-3xl font-bold tracking-[1px] uppercase mb-8">Send Crypto</h3>
+              <h3 className="font-display text-2xl md:text-3xl font-bold tracking-[1px] uppercase mb-8">Send Crypto</h3>
               
               <div className="space-y-4 mb-8">
                 <input 
@@ -258,7 +260,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-8 text-white shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#0088ff]/10 blur-[50px] rounded-full pointer-events-none" />
               <div className="text-[#0088ff] text-[10px] font-mono tracking-[0.2em] uppercase font-bold mb-4 relative z-10">⬡ DNA Drift Detection</div>
@@ -278,9 +280,9 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 min-h-[400px] text-white shadow-2xl"
+              className="bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-8 min-h-[400px] text-white shadow-2xl"
             >
-              <h3 className="font-display text-2xl font-bold tracking-[1px] uppercase mb-8">On-Chain Activity</h3>
+              <h3 className="font-display text-xl md:text-2xl font-bold tracking-[1px] uppercase mb-8">On-Chain Activity</h3>
               
               {solanaLinks.length === 0 ? (
                 <div className="text-white/40 text-[10px] font-mono text-center mt-20 uppercase tracking-[0.2em]">No activity yet.</div>
@@ -326,9 +328,9 @@ export default function Dashboard() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-lg bg-[#0a0a0a] border-2 border-black rounded-3xl p-8 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] text-center relative overflow-hidden text-white"
+              className="w-full max-w-lg bg-[#0a0a0a] border-2 border-black rounded-3xl p-5 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,0.4)] text-center relative overflow-hidden text-white"
             >
-              <h2 className="font-display text-4xl font-bold tracking-[1px] uppercase mb-4 relative z-10">Sign Transaction</h2>
+              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-[1px] uppercase mb-4 relative z-10">Sign Transaction</h2>
               <p className="text-white/70 text-sm mb-8 font-sans relative z-10 leading-relaxed">
                 Type the phrase below to reconstruct your secret key on the fly and sign this transfer.
               </p>
