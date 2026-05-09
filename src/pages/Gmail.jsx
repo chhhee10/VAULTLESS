@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVaultless } from '../lib/VaultlessContext';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment } from '@react-three/drei';
+import { Environment, MeshTransmissionMaterial } from '@react-three/drei';
 import { useMotionValue, useSpring } from 'framer-motion';
 import * as THREE from 'three';
 
@@ -12,28 +12,30 @@ const InteractiveHexagon = ({ mouseX, mouseY }) => {
   useFrame((state) => {
     if (!meshRef.current) return;
 
-    // Base rotation to make the cylinder face the camera (Math.PI / 2 on X)
-    // Then we add the mouse offset to make it "look" at the cursor
-    const targetX = Math.PI / 2 + (mouseY.get() * Math.PI) / 4;
+    // Base rotation for the torus is 0,0,0 to face the camera.
+    // Then we add the mouse offset to make it "look" at the cursor.
+    // Adding a slight Z rotation so the hexagon point is at the top.
+    const targetX = (mouseY.get() * Math.PI) / 4;
     const targetY = (mouseX.get() * Math.PI) / 4;
 
     // Smoothly interpolate current rotation to the target
     meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, targetX, 0.1);
     meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetY, 0.1);
+    meshRef.current.rotation.z = Math.PI / 3; // 60 degrees rotation
 
     // Add a slight idle breathing animation
     meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.15;
   });
 
   return (
-    <mesh ref={meshRef} scale={1.8}>
-      {/* 6-sided cylinder = Hexagon */}
-      <cylinderGeometry args={[1, 1, 0.4, 6]} />
-      <meshStandardMaterial
+    <mesh ref={meshRef} scale={0.7}>
+      <torusGeometry args={[1.5, 0.4, 64, 6]} />
+      <meshPhysicalMaterial
         color="#00FF4D"
-        roughness={0.2}
-        metalness={0.8}
-        flatShading={true}
+        metalness={0.1}
+        roughness={0.05}
+        clearcoat={1.0}
+        clearcoatRoughness={0.1}
       />
     </mesh>
   );
