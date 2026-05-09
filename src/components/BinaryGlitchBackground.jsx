@@ -64,7 +64,7 @@ const BinaryGlitchBackground = () => {
           const dist = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.random() * 40);
 
           let char = grid[idx] || '0';
-          let color = 'rgba(0, 0, 0, 0.04)'; // Extremely faint text for the base grid on white
+          let color = 'rgba(0, 0, 0, 0.15)'; // Significantly darker text for better visibility
 
           // Glitch effect near mouse
           if (dist < 120) {

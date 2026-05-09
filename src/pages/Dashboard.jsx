@@ -165,7 +165,7 @@ export default function Dashboard() {
             Re-enroll ↺
           </button>
           <button 
-            className="w-full md:w-auto col-span-2 md:col-span-1 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-4 py-2.5 md:px-5 md:py-2.5 rounded-full text-black hover:opacity-50 transition-opacity bg-black/5 md:bg-transparent"
+            className="w-full md:w-auto col-span-2 md:col-span-1 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-2 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-black text-black hover:bg-black hover:text-white transition-colors whitespace-nowrap"
             onClick={() => { setSecretKey(null); navigate('/gmail'); }}
           >
             Sign Out
