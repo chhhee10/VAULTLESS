@@ -17,7 +17,9 @@ const BinaryGlitchBackground = () => {
 
     const resize = () => {
       width = window.innerWidth;
-      height = window.innerHeight;
+      // Use the parent's full scrollable height so the bg covers everything even when zoomed
+      const parent = canvas.parentElement;
+      height = parent ? Math.max(parent.scrollHeight, window.innerHeight) : window.innerHeight;
       canvas.width = width;
       canvas.height = height;
 
@@ -97,7 +99,7 @@ const BinaryGlitchBackground = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-80" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-80" />;
 };
 
 export default BinaryGlitchBackground;

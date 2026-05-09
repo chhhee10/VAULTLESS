@@ -72,11 +72,11 @@ const ParallaxSection = () => {
     <section className="relative w-full h-[75vh] md:h-[120vh] bg-white overflow-hidden cursor-crosshair">
       <div className="absolute inset-0 w-full h-full pt-16 md:pt-0">
         {textLayout.map((item, index) => (
-          <ParallaxWord 
-            key={index} 
-            {...item} 
-            mouseX={smoothMouseX} 
-            mouseY={smoothMouseY} 
+          <ParallaxWord
+            key={index}
+            {...item}
+            mouseX={smoothMouseX}
+            mouseY={smoothMouseY}
           />
         ))}
       </div>
