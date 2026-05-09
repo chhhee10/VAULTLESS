@@ -603,6 +603,63 @@ export function useMouseDNA() {
   const getPoints = useCallback(() => points.current, []);
   const getDiagnostics = useCallback(() => diagnosticsRef.current, []);
 
+  useEffect(() => {
+    const handleRNSensorData = (e) => {
+      if (!active) return;
+      const { type, data } = e.detail;
+      const now = performance.now();
+      
+      if (type === 'accelerometer') {
+        if (now - lastMotionTime.current < 50) return;
+        lastMotionTime.current = now;
+        
+        // Expo accelerometer is in Gs (1G = 9.81 m/s^2)
+        const accRaw = {
+          x: clampFinite(data.x * 9.81 || 0, -80, 80),
+          y: clampFinite(data.y * 9.81 || 0, -80, 80),
+          z: clampFinite(data.z * 9.81 || 0, -80, 80),
+        };
+        const prev = filteredAcc.current || accRaw;
+        const smooth = 0.3;
+        const accFiltered = {
+          x: prev.x + (accRaw.x - prev.x) * smooth,
+          y: prev.y + (accRaw.y - prev.y) * smooth,
+          z: prev.z + (accRaw.z - prev.z) * smooth,
+        };
+        filteredAcc.current = accFiltered;
+        motionData.current.acc.push({ x: accFiltered.x, y: accFiltered.y, z: accFiltered.z, t: now });
+        if (motionData.current.acc.length > 512) motionData.current.acc.shift();
+        updateMotionSupported(true);
+      } else if (type === 'gyroscope') {
+        if (now - lastMotionGyroAt.current < 50) return;
+        lastMotionGyroAt.current = now;
+        
+        // Expo gyroscope is in rad/s, we need deg/s
+        const rotRaw = {
+          alpha: clampFinite(data.x * 180 / Math.PI || 0, -2000, 2000),
+          beta: clampFinite(data.y * 180 / Math.PI || 0, -2000, 2000),
+          gamma: clampFinite(data.z * 180 / Math.PI || 0, -2000, 2000),
+        };
+        const prev = filteredGyro.current || rotRaw;
+        const smooth = 0.35;
+        const rotFiltered = {
+          alpha: prev.alpha + (rotRaw.alpha - prev.alpha) * smooth,
+          beta: prev.beta + (rotRaw.beta - prev.beta) * smooth,
+          gamma: prev.gamma + (rotRaw.gamma - prev.gamma) * smooth,
+        };
+        filteredGyro.current = rotFiltered;
+        motionData.current.gyro.push({ alpha: rotFiltered.alpha, beta: rotFiltered.beta, gamma: rotFiltered.gamma, t: now });
+        if (motionData.current.gyro.length > 512) motionData.current.gyro.shift();
+        updateMotionSupported(true);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('RN_SENSOR_DATA', handleRNSensorData);
+      return () => window.removeEventListener('RN_SENSOR_DATA', handleRNSensorData);
+    }
+  }, [active, updateMotionSupported]);
+
   return { onMouseMove, onMouseDown, onMouseUp, onTouchMove, onTouchStart, onTouchEnd, startCapture, requestSensorAccess, reset, extractVector, getMotionData, getPoints, getDiagnostics, motionSupported };
 }
 
