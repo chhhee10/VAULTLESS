@@ -4,15 +4,16 @@ import { motion, useMotionValue, useSpring, useTransform, MotionValue } from 'fr
 const textLayout = [
   { text: "REDEFINING", top: "15%", left: "30%", speedX: 0.05, speedY: 0.02 },
   { text: "TRUE", top: "15%", left: "75%", speedX: -0.04, speedY: 0.03 },
-  { text: "IDENTITY", top: "35%", left: "20%", speedX: 0.08, speedY: -0.02 },
-  { text: "AND", top: "35%", left: "65%", speedX: -0.06, speedY: 0.04 },
-  { text: "DIGITAL", top: "50%", left: "80%", speedX: 0.03, speedY: -0.05 },
-  { text: "FREEDOM,", top: "65%", left: "25%", speedX: -0.07, speedY: 0.02 },
-  { text: "WHERE", top: "65%", left: "55%", speedX: 0.05, speedY: -0.03 },
-  { text: "SECURITY", top: "80%", left: "65%", speedX: -0.03, speedY: 0.06 },
-  { text: "KNOWS", top: "90%", left: "20%", speedX: 0.06, speedY: -0.04 },
-  { text: "NO", top: "90%", left: "80%", speedX: -0.05, speedY: 0.03 },
-  { text: "BOUNDS.", top: "95%", left: "45%", speedX: 0.04, speedY: -0.02 },
+  { text: "IDENTITY", top: "28%", left: "20%", speedX: 0.08, speedY: -0.02 },
+  { text: "AND", top: "28%", left: "65%", speedX: -0.06, speedY: 0.04 },
+  { text: "DIGITAL", top: "41%", left: "75%", speedX: 0.03, speedY: -0.05 },
+  { text: "FREEDOM,", top: "54%", left: "25%", speedX: -0.07, speedY: 0.02 },
+  { text: "WHERE", top: "54%", left: "65%", speedX: 0.05, speedY: -0.03 },
+  // Swapped SECURITY to be ABOVE KNOWS to fix the reading order
+  { text: "SECURITY", top: "67%", left: "50%", speedX: -0.03, speedY: 0.06 },
+  { text: "KNOWS", top: "80%", left: "30%", speedX: 0.06, speedY: -0.04 },
+  { text: "NO", top: "80%", left: "70%", speedX: -0.05, speedY: 0.03 },
+  { text: "BOUNDS.", top: "93%", left: "50%", speedX: 0.04, speedY: -0.02 },
 ];
 
 interface ParallaxWordProps {
@@ -31,7 +32,8 @@ const ParallaxWord: React.FC<ParallaxWordProps> = ({ text, top, left, speedX, sp
 
   return (
     <motion.div
-      className="absolute font-display text-5xl md:text-7xl lg:text-[8rem] leading-none tracking-tighter whitespace-nowrap text-black pointer-events-none"
+      // Made text smaller on mobile (text-3xl) to fix overlapping, keeps original text-5xl etc for desktop
+      className="absolute font-display text-3xl sm:text-4xl md:text-5xl lg:text-[7rem] xl:text-[8rem] leading-none tracking-tighter whitespace-nowrap text-black pointer-events-none"
       style={{
         top,
         left,
@@ -67,14 +69,14 @@ const ParallaxSection = () => {
   }, [mouseX, mouseY]);
 
   return (
-    <section className="relative w-full h-[120vh] bg-white overflow-hidden py-20 cursor-crosshair">
-      <div className="absolute inset-0 w-full h-full">
+    <section className="relative w-full h-[75vh] md:h-[120vh] bg-white overflow-hidden cursor-crosshair">
+      <div className="absolute inset-0 w-full h-full pt-16 md:pt-0">
         {textLayout.map((item, index) => (
-          <ParallaxWord 
-            key={index} 
-            {...item} 
-            mouseX={smoothMouseX} 
-            mouseY={smoothMouseY} 
+          <ParallaxWord
+            key={index}
+            {...item}
+            mouseX={smoothMouseX}
+            mouseY={smoothMouseY}
           />
         ))}
       </div>
