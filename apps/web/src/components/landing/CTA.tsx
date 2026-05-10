@@ -5,7 +5,7 @@ import { useVaultless } from '../../lib/VaultlessContext';
 
 const CTA = () => {
   const navigate = useNavigate();
-  const { setDemoMode, clearEnrollment, isRealEnrolled } = useVaultless();
+  const { setDemoMode, clearEnrollment, isRealEnrolled } = useVaultless() as any;
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,

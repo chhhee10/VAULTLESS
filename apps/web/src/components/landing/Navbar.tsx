@@ -5,7 +5,7 @@ import { useVaultless } from '../../lib/VaultlessContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { setDemoMode, clearEnrollment, isRealEnrolled } = useVaultless();
+  const { setDemoMode, clearEnrollment, isRealEnrolled } = useVaultless() as any;
   const { scrollYProgress } = useScroll();
 
   const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1200, height: typeof window !== 'undefined' ? window.innerHeight : 800 });
