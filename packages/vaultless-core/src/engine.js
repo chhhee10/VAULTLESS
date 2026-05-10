@@ -205,13 +205,36 @@ export function detectStress(liveK, enrollK) {
   return liveVariance > baseVariance * 2.5;
 }
 
-export function classifyScore(score, isStress = false) {
+export const TRUST_POLICIES = {
+  NORMAL: {
+    label: 'Normal',
+    authThreshold: 0.70,
+    duressMin: 0.60,
+    description: 'Balanced security and convenience.'
+  },
+  HIGH_RISK: {
+    label: 'High-Risk',
+    authThreshold: 0.82,
+    duressMin: 0.72,
+    description: 'Tightened thresholds for sensitive environments.'
+  },
+  TRAVEL: {
+    label: 'Travel',
+    authThreshold: 0.88,
+    duressMin: 0.80,
+    description: 'Maximum security. Requires near-perfect biometric match.'
+  }
+};
+
+export function classifyScore(score, isStress = false, policyKey = 'NORMAL') {
+  const policy = TRUST_POLICIES[policyKey] || TRUST_POLICIES.NORMAL;
+  
   // Match the visual thresholds and keep duress narrow:
-  // - >= 0.70                    → authenticated
-  // - 0.60–0.70 with stress true → duress
+  // - >= authThreshold           → authenticated
+  // - duressMin – authThreshold with stress true → duress
   // - everything else            → rejected
-  if (score >= 0.70) return 'authenticated';
-  if (score >= 0.60 && score < 0.70 && isStress) return 'duress';
+  if (score >= policy.authThreshold) return 'authenticated';
+  if (score >= policy.duressMin && score < policy.authThreshold && isStress) return 'duress';
   return 'rejected';
 }
 
@@ -285,7 +308,7 @@ export function std(arr) {
   return Math.sqrt(variance(arr));
 }
 
-function meanAcceleration(velocities) {
+export function meanAcceleration(velocities) {
   if (velocities.length < 2) return 0;
   const accels = [];
   for (let i = 1; i < velocities.length; i++) {
@@ -320,7 +343,7 @@ function padOrTrim(arr, len) {
   return [...arr, ...new Array(len - arr.length).fill(0)];
 }
 
-function clampFinite(value, min, max) {
+export function clampFinite(value, min, max) {
   if (!Number.isFinite(value)) return 0;
   if (value < min) return min;
   if (value > max) return max;
@@ -334,7 +357,7 @@ function wrapAngleDeg(diff) {
   return d;
 }
 
-function robustMeanStd(arr, trimRatio = 0.1) {
+export function robustMeanStd(arr, trimRatio = 0.1) {
   if (!arr || arr.length === 0) return { mean: 0, std: 0 };
   if (arr.length < 5) return { mean: mean(arr), std: std(arr) };
 

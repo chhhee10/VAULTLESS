@@ -6,12 +6,16 @@ Thumbs.db
 node_modules/
 dist/
 dist-ssr/
-*.local
+build/
+.cache/
+.turbo/
 
 # --- Environment ---
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # --- Logs ---
 logs/
@@ -36,14 +40,14 @@ target/
 test-ledger/
 **/.anchor/
 **/*.so
-**/*.json
-!**/idl/*.json
-!**/package.json
+# Ignore keypairs but keep important configs
+*-keypair.json
+deploy-keypair.json
+id.json
 
 # --- Project Specific ---
 email_template.html
-CONTEXT.md
-*.mjs
-*.cjs
 scratch/
 temp/
+.vercel
+.next

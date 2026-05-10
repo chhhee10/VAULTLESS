@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { SvgXml, Svg, Defs, RadialGradient, Stop, Rect, Pattern, Line } from 'react-native-svg';
-import { useMobileDNA, compareMobileDNA } from './src/hooks/MobileBehaviouralEngine';
+import { useMobileDNA, compareMobileDNA, detectStress, classifyScore } from './src/hooks/MobileBehaviouralEngine';
 
 const iconSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -186,9 +186,12 @@ export default function App() {
       } else if (phase === 'auth') {
         if (liveVector && enrolledDNA) {
           const matchScore = compareMobileDNA(liveVector, enrolledDNA);
+          const isStress = detectStress(liveVector, enrolledDNA); // Simple stress check
+          const classification = classifyScore(matchScore, isStress);
+          
           setScore(`Match Score: ${(matchScore * 100).toFixed(1)}%`);
           
-          if (matchScore > 0.65) {
+          if (classification === 'authenticated') {
             setTimeout(() => setPhase('dashboard'), 2000);
           } else {
             setPhase('result');

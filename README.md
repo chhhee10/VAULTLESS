@@ -241,10 +241,12 @@ The contract (Anchor/Rust) manages the global registry:
 
 ```text
 VAULTLESS/
-├── src/                # Frontend Source
+├── apps/
+│   └── web/            # Vite + React Dashboard
+├── packages/
+│   └── vaultless-core/ # Biometric DNA Engine (Platform Agnostic)
 ├── program/            # Solana Smart Contract (Anchor)
-├── assets/             # Email & UI Assets
-└── .env                # Secret Configuration
+└── assets/             # Security Assets & Templates
 ```
 
 ---

@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { Accelerometer, Gyroscope } from 'expo-sensors';
-import { mean, std, zNormalize, pearsonCorrelation, cosineSimilarity } from '@vaultless/core';
+import { mean, std, zNormalize, pearsonCorrelation, cosineSimilarity, TRUST_POLICIES, classifyScore, detectStress } from '@vaultless/core';
 
-export { cosineSimilarity as compareMobileDNA };
+export { cosineSimilarity as compareMobileDNA, TRUST_POLICIES, classifyScore, detectStress };
 
 export function useMobileDNA() {
   const [active, setActive] = useState(false);
