@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { VaultlessProvider } from './lib/VaultlessContext';
 import Landing from './pages/Landing';
-import Gmail from './pages/Gmail';
+import Access from './pages/Access';
 import Enroll from './pages/Enroll';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Ghost from './pages/Ghost';
+import Lab from './pages/Lab';
 
 
 export default function App() {
@@ -15,11 +16,12 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/gmail" element={<Gmail />} />
+          <Route path="/access" element={<Access />} />
           <Route path="/enroll" element={<Enroll />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/ghost" element={<Ghost />} />
+          <Route path="/lab" element={<Lab />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 

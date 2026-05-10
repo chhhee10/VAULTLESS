@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { mean, std, variance, zNormalize } from '@vaultless/core';
+import { mean, std, variance, zNormalize, clampFinite, robustMeanStd, meanAcceleration } from '@vaultless/core';
 
 // The phrase — must match exactly what's used in Enroll/Auth
 const PHRASE = 'Secure my account';

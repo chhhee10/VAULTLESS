@@ -62,20 +62,36 @@ export default function Enroll() {
   }, [phase, sampleCount, mouse.startCapture]);
 
   useEffect(() => {
-    if (!mobileLikeDevice) return;
     if (phase !== 'capturing') return;
-    const onTouchStartWindow = (e) => mouse.onTouchStart(e);
-    const onTouchMoveWindow = (e) => mouse.onTouchMove(e);
-    const onTouchEndWindow = () => mouse.onTouchEnd();
-    window.addEventListener('touchstart', onTouchStartWindow, { passive: true });
-    window.addEventListener('touchmove', onTouchMoveWindow, { passive: true });
-    window.addEventListener('touchend', onTouchEndWindow, { passive: true });
+    
+    // Desktop mouse events
+    const onMouseMove = (e) => mouse.onMouseMove(e);
+    const onMouseDown = (e) => mouse.onMouseDown(e);
+    const onMouseUp = (e) => mouse.onMouseUp(e);
+    // Mobile touch events
+    const onTouchStart = (e) => mouse.onTouchStart(e);
+    const onTouchMove = (e) => mouse.onTouchMove(e);
+    const onTouchEnd = () => mouse.onTouchEnd();
+
+    if (!mobileLikeDevice) {
+      window.addEventListener('mousemove', onMouseMove, { passive: true });
+      window.addEventListener('mousedown', onMouseDown, { passive: true });
+      window.addEventListener('mouseup', onMouseUp, { passive: true });
+    } else {
+      window.addEventListener('touchstart', onTouchStart, { passive: true });
+      window.addEventListener('touchmove', onTouchMove, { passive: true });
+      window.addEventListener('touchend', onTouchEnd, { passive: true });
+    }
+
     return () => {
-      window.removeEventListener('touchstart', onTouchStartWindow);
-      window.removeEventListener('touchmove', onTouchMoveWindow);
-      window.removeEventListener('touchend', onTouchEndWindow);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
     };
-  }, [mobileLikeDevice, phase, mouse.onTouchStart, mouse.onTouchMove, mouse.onTouchEnd]);
+  }, [mobileLikeDevice, phase, mouse]);
 
   useEffect(() => {
     if (!mobileLikeDevice) {
@@ -500,12 +516,6 @@ export default function Enroll() {
                       onChange={handleTyping}
                       onKeyDown={keystroke.onKeyDown}
                       onKeyUp={handleKeyUp}
-                      onMouseMove={mouse.onMouseMove}
-                      onMouseDown={mouse.onMouseDown}
-                      onMouseUp={mouse.onMouseUp}
-                      onTouchStart={mouse.onTouchStart}
-                      onTouchMove={mouse.onTouchMove}
-                      onTouchEnd={mouse.onTouchEnd}
                       placeholder=""
                       autoComplete="off"
                       spellCheck={false}

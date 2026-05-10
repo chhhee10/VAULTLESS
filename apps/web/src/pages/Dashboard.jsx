@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVaultless } from '../lib/VaultlessContext';
 import { getWalletBalance, sendSolWithPhantom } from '../lib/solana';
-import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, classifyScore, detectStress } from '../hooks/behaviouralEngine';
+import { useKeystrokeDNA, useMouseDNA, buildCombinedVector, cosineSimilarity, classifyScore, detectStress, TRUST_POLICIES } from '../hooks/behaviouralEngine';
 import BinaryGlitchBackground from '../components/BinaryGlitchBackground';
 
 const PHRASE = 'Secure my account';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode, sessionActive, clearEnrollment, enrollmentVector, enrollmentKeystroke, enrollmentMouse } = useVaultless();
+  const { secretKey, setSecretKey, helperData, walletAddress, solanaLinks, demoMode, sessionActive, clearEnrollment, enrollmentVector, enrollmentKeystroke, enrollmentMouse, setDebugData } = useVaultless();
   
   const [bioWallet, setBioWallet] = useState(null);
   const [balance, setBalance] = useState(0);
@@ -30,12 +30,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!sessionActive) {
-      navigate('/gmail');
+      navigate('/access');
       return;
     }
     if (demoMode) {
       if (!secretKey) {
-        navigate('/gmail');
+        navigate('/access');
         return;
       }
       setBioWallet({ publicKey: { toString: () => DEMO_WALLET_ADDRESS } });
@@ -47,7 +47,7 @@ export default function Dashboard() {
       refreshBalance(walletAddress);
       return;
     }
-    navigate('/gmail');
+    navigate('/access');
   }, [secretKey, demoMode, walletAddress, sessionActive]);
 
   const refreshBalance = async (pubkey) => {
@@ -59,7 +59,37 @@ export default function Dashboard() {
     }
   };
 
+  useEffect(() => {
+    if (!showAuthModal) return;
+    
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    const onMouseMove = (e) => mouse.onMouseMove(e);
+    const onMouseDown = (e) => mouse.onMouseDown(e);
+    const onMouseUp = (e) => mouse.onMouseUp(e);
+    const onTouchStart = (e) => mouse.onTouchStart(e);
+    const onTouchMove = (e) => mouse.onTouchMove(e);
+    const onTouchEnd = () => mouse.onTouchEnd();
 
+    if (!isMobile) {
+      window.addEventListener('mousemove', onMouseMove, { passive: true });
+      window.addEventListener('mousedown', onMouseDown, { passive: true });
+      window.addEventListener('mouseup', onMouseUp, { passive: true });
+    } else {
+      window.addEventListener('touchstart', onTouchStart, { passive: true });
+      window.addEventListener('touchmove', onTouchMove, { passive: true });
+      window.addEventListener('touchend', onTouchEnd, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [showAuthModal, mouse]);
 
   const startSend = () => {
     if (!recipient || !amount || isNaN(amount)) {
@@ -102,6 +132,8 @@ export default function Dashboard() {
 
     const isStress = detectStress(kData, enrollmentKeystroke);
     const classification = classifyScore(simScore, isStress);
+    
+    setDebugData(liveVector, kData, mData, simScore);
     
     if (classification === 'authenticated') {
       setTxStatus('Identity verified! Prompting Phantom wallet...');
@@ -156,7 +188,7 @@ export default function Dashboard() {
           </button>
           <button 
             className="w-full md:w-auto col-span-2 md:col-span-1 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.1em] px-2 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-black text-black hover:bg-black hover:text-white transition-colors whitespace-nowrap"
-            onClick={() => { setSecretKey(null); navigate('/gmail'); }}
+            onClick={() => { setSecretKey(null); navigate('/access'); }}
           >
             Sign Out
           </button>

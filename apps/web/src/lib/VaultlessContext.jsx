@@ -11,9 +11,10 @@ function deserializeVector(v) {
   return v ? new Float32Array(v) : null;
 }
 
-function loadFromStorage() {
+function loadFromStorage(demoMode) {
   try {
-    const raw = localStorage.getItem('vaultless_enrollment');
+    const key = demoMode ? 'vaultless_enrollment_demo' : 'vaultless_enrollment_real';
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const data = JSON.parse(raw);
     return {
@@ -31,17 +32,18 @@ function loadFromStorage() {
   }
 }
 
-function saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey }) {
+function saveToStorage(data, demoMode) {
   try {
-    localStorage.setItem('vaultless_enrollment', JSON.stringify({
-      enrollmentVector:    serializeVector(enrollmentVector),
-      enrollmentKeystroke: enrollmentKeystroke,
-      enrollmentMouse:     enrollmentMouse,
-      walletAddress:       walletAddress,
-      recoveryEmail:       recoveryEmail || '',
-      isEnrolled:          isEnrolled,
-      helperData:          helperData,
-      secretKey:           secretKey,
+    const key = demoMode ? 'vaultless_enrollment_demo' : 'vaultless_enrollment_real';
+    localStorage.setItem(key, JSON.stringify({
+      enrollmentVector:    serializeVector(data.enrollmentVector),
+      enrollmentKeystroke: data.enrollmentKeystroke,
+      enrollmentMouse:     data.enrollmentMouse,
+      walletAddress:       data.walletAddress,
+      recoveryEmail:       data.recoveryEmail || '',
+      isEnrolled:          data.isEnrolled,
+      helperData:          data.helperData,
+      secretKey:           data.secretKey,
     }));
   } catch (e) {
     console.error('[VAULTLESS] Failed to persist enrollment:', e);
@@ -70,7 +72,8 @@ function saveDemoMode(value) {
 }
 
 export function VaultlessProvider({ children }) {
-  const saved = loadFromStorage();
+  const initialDemoMode = loadDemoMode();
+  const saved = loadFromStorage(initialDemoMode);
 
   const [enrollmentVector,    setEnrollmentVectorRaw]    = useState(saved?.enrollmentVector    || null);
   const [enrollmentKeystroke, setEnrollmentKeystrokeRaw] = useState(saved?.enrollmentKeystroke || null);
@@ -81,11 +84,56 @@ export function VaultlessProvider({ children }) {
   const [helperData,          setHelperDataRaw]          = useState(saved?.helperData          || null);
   const [secretKey,           setSecretKeyRaw]           = useState(saved?.secretKey           || null);
 
+  const [demoMode, setDemoModeRaw] = useState(initialDemoMode);
+
   const [isDuressMode,  setIsDuressMode]  = useState(false);
-  const [lastAuthScore, setLastAuthScore] = useState(null);
+  const [lastAuthScore, setLastAuthScore] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`vaultless_debug_score_${initialDemoMode ? 'demo' : 'real'}`);
+      return saved ? parseFloat(saved) : null;
+    } catch { return null; }
+  });
+  const [lastLiveVector, setLastLiveVector] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`vaultless_debug_vector_${initialDemoMode ? 'demo' : 'real'}`);
+      return saved ? new Float32Array(JSON.parse(saved)) : null;
+    } catch { return null; }
+  });
+  const [lastLiveKeystroke, setLastLiveKeystroke] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`vaultless_debug_keystroke_${initialDemoMode ? 'demo' : 'real'}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [lastLiveMouse, setLastLiveMouse] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`vaultless_debug_mouse_${initialDemoMode ? 'demo' : 'real'}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [sessionActive, setSessionActive] = useState(false);
   const [etherscanLinks, setEtherscanLinks] = useState([]);
-  const [demoMode, setDemoModeRaw] = useState(loadDemoMode);
+
+  // Cross-tab synchronization
+  useEffect(() => {
+    const handleStorage = (e) => {
+      const pfx = demoMode ? 'demo' : 'real';
+      if (e.key === `vaultless_debug_vector_${pfx}` && e.newValue) {
+        setLastLiveVector(new Float32Array(JSON.parse(e.newValue)));
+      }
+      if (e.key === `vaultless_debug_keystroke_${pfx}` && e.newValue) {
+        setLastLiveKeystroke(JSON.parse(e.newValue));
+      }
+      if (e.key === `vaultless_debug_mouse_${pfx}` && e.newValue) {
+        setLastLiveMouse(JSON.parse(e.newValue));
+      }
+      if (e.key === `vaultless_debug_score_${pfx}` && e.newValue) {
+        setLastAuthScore(parseFloat(e.newValue));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [demoMode]);
 
   // Wrap setters to also persist whenever enrollment data changes
   const setEnrollmentVector = (v) => {
@@ -111,16 +159,55 @@ export function VaultlessProvider({ children }) {
   const setDemoMode = (value) => {
     setDemoModeRaw(value);
     saveDemoMode(value);
+    
+    // Switch state to the other mode's data
+    const other = loadFromStorage(value);
+    setEnrollmentVectorRaw(other?.enrollmentVector || null);
+    setEnrollmentKeystrokeRaw(other?.enrollmentKeystroke || null);
+    setEnrollmentMouseRaw(other?.enrollmentMouse || null);
+    setWalletAddressRaw(other?.walletAddress || null);
+    setRecoveryEmailRaw(other?.recoveryEmail || '');
+    setIsEnrolledRaw(other?.isEnrolled || false);
+    setHelperDataRaw(other?.helperData || null);
+    setSecretKeyRaw(other?.secretKey || null);
+
+    // Switch debug data too
+    try {
+      const pfx = value ? 'demo' : 'real';
+      const dScore = localStorage.getItem(`vaultless_debug_score_${pfx}`);
+      const dVec = localStorage.getItem(`vaultless_debug_vector_${pfx}`);
+      const dKey = localStorage.getItem(`vaultless_debug_keystroke_${pfx}`);
+      const dMou = localStorage.getItem(`vaultless_debug_mouse_${pfx}`);
+      setLastAuthScore(dScore ? parseFloat(dScore) : null);
+      setLastLiveVector(dVec ? new Float32Array(JSON.parse(dVec)) : null);
+      setLastLiveKeystroke(dKey ? JSON.parse(dKey) : null);
+      setLastLiveMouse(dMou ? JSON.parse(dMou) : null);
+    } catch {
+      setLastAuthScore(null); setLastLiveVector(null); setLastLiveKeystroke(null); setLastLiveMouse(null);
+    }
+  };
+
+  const setDebugData = (vector, keystroke, mouse, score) => {
+    setLastLiveVector(vector);
+    setLastLiveKeystroke(keystroke);
+    setLastLiveMouse(mouse);
+    setLastAuthScore(score);
+    try {
+      const pfx = demoMode ? 'demo' : 'real';
+      localStorage.setItem(`vaultless_debug_vector_${pfx}`, JSON.stringify(Array.from(vector)));
+      localStorage.setItem(`vaultless_debug_keystroke_${pfx}`, JSON.stringify(keystroke));
+      localStorage.setItem(`vaultless_debug_mouse_${pfx}`, JSON.stringify(mouse));
+      localStorage.setItem(`vaultless_debug_score_${pfx}`, String(score));
+    } catch (e) { console.error(e); }
   };
 
   // Persist to localStorage whenever any enrollment field changes
   useEffect(() => {
     if (isEnrolled && enrollmentVector && enrollmentKeystroke) {
-      saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey });
-      console.log('[VAULTLESS] Enrollment persisted to localStorage');
-      console.log('[VAULTLESS] Stored holdTimes:', enrollmentKeystroke.holdTimes?.length, 'flightTimes:', enrollmentKeystroke.flightTimes?.length);
+      saveToStorage({ enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey }, demoMode);
+      console.log(`[VAULTLESS] Enrollment persisted to ${demoMode ? 'DEMO' : 'REAL'} storage`);
     }
-  }, [enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey]);
+  }, [enrollmentVector, enrollmentKeystroke, enrollmentMouse, walletAddress, recoveryEmail, isEnrolled, helperData, secretKey, demoMode]);
 
   const addSolanaLink = (label, txHash) => {
     setEtherscanLinks(prev => [...prev, {
@@ -131,7 +218,8 @@ export function VaultlessProvider({ children }) {
   };
 
   const clearEnrollment = () => {
-    localStorage.removeItem('vaultless_enrollment');
+    const key = demoMode ? 'vaultless_enrollment_demo' : 'vaultless_enrollment_real';
+    localStorage.removeItem(key);
     setEnrollmentVectorRaw(null);
     setEnrollmentKeystrokeRaw(null);
     setEnrollmentMouseRaw(null);
@@ -152,10 +240,16 @@ export function VaultlessProvider({ children }) {
       secretKey,           setSecretKey,
       isDuressMode,        setIsDuressMode,
       sessionActive,       setSessionActive,
-      lastAuthScore,       setLastAuthScore,
+      lastAuthScore,
+      lastLiveVector,
+      lastLiveKeystroke,
+      lastLiveMouse,
+      setDebugData,
       solanaLinks: etherscanLinks, addSolanaLink,
       demoMode,            setDemoMode,
       clearEnrollment,
+      isRealEnrolled: loadFromStorage(false)?.isEnrolled || false,
+      isDemoEnrolled: loadFromStorage(true)?.isEnrolled || false,
     }}>
       {children}
     </VaultlessContext.Provider>

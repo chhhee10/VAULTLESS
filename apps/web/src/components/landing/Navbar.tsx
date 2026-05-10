@@ -5,7 +5,7 @@ import { useVaultless } from '../../lib/VaultlessContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { setDemoMode, clearEnrollment, isEnrolled } = useVaultless();
+  const { setDemoMode, clearEnrollment, isRealEnrolled } = useVaultless();
   const { scrollYProgress } = useScroll();
 
   const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1200, height: typeof window !== 'undefined' ? window.innerHeight : 800 });
@@ -43,7 +43,7 @@ const Navbar = () => {
             className="transition-colors cursor-pointer hover:opacity-70"
             onClick={() => {
               setDemoMode(true);
-              navigate('/gmail');
+              navigate('/access');
             }}
           >
             DEMO
@@ -51,16 +51,17 @@ const Navbar = () => {
           <button 
             className="transition-colors cursor-pointer hover:opacity-70"
             onClick={() => {
-              if (isEnrolled) {
-                navigate('/gmail');
-              } else {
-                clearEnrollment();
+              if (isRealEnrolled) {
                 setDemoMode(false);
+                navigate('/access');
+              } else {
+                setDemoMode(false);
+                clearEnrollment();
                 navigate('/enroll');
               }
             }}
           >
-            {isEnrolled ? "SIGN IN" : "SIGN UP"}
+            {isRealEnrolled ? "SIGN IN" : "SIGN UP"}
           </button>
         </div>
       </nav>
