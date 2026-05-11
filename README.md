@@ -647,6 +647,5 @@ The behavioural engine exposes several tunable thresholds in `CONTEXT.md` and di
 
 **Vaultless** — No passwords. No seed phrases. Just you.
 
-Built for the Colosseum Hackathon 2026.
 
 </div>
